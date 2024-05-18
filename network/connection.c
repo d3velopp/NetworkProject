@@ -23,7 +23,6 @@ char* extractIpAddress(){
     int family, s;
     char host[1025];
     char *loopbackIP = NULL;
-
     if (getifaddrs(&ifaddr) == -1) {
         perror("getifaddrs");
         return NULL;
@@ -97,7 +96,7 @@ int connect_to_server(const char* ip_server, int port_server,int new_player){
     game_packet* packet = create_game_packet();
 
     fd_set fd_connect;
-
+    uint8_t color;
     do {
         FD_ZERO(&fd_connect);
         FD_SET(socket_server, &fd_connect);
@@ -116,30 +115,39 @@ int connect_to_server(const char* ip_server, int port_server,int new_player){
         if ( packet-> type == MSG_CONNECT_START){
             if ( new_player){
                 main_port = port_generator();
+                memcpy( &color, packet->data, sizeof(uint8_t));
                 printf("Port generated: %d\n", main_port);
-                init_game_packet(packet, MSG_CONNECT_NEW, 0);
+                init_game_packet(packet, MSG_CONNECT_NEW, sizeof(uint8_t));
+                memcpy(packet->data, &color, sizeof(uint8_t));
                 if ( send_game_packet(packet, socket_server) == -1){
                     printf("Error sending packet\n");
                     close(socket_server);
                     return -1;
                 }
             } else {
-                init_game_packet(packet, MSG_CONNECT_REQ, 0);
+                init_game_packet(packet, MSG_CONNECT_REQ, sizeof(uint8_t));
+                memcpy(packet->data, &main_color, sizeof(uint8_t));
                 if ( send_game_packet(packet, socket_server) == -1){
                     printf("Error sending packet\n");
                     close(socket_server);
                     return -1;
                 }
             }
+            main_color = 0;
             packet-> type = MSG_BAD_PORT;
         }
     }
     while ( packet->type != MSG_CONNECT_OK);
+    uint8_t guest_color;
+    memcpy(&guest_color, packet->data, sizeof(uint8_t));
+    main_color = color;
     client* current_client = add_client(socket_server, port_server, sock_adresse);
+    current_client->color = guest_color;
     python_packet* py_packet = create_python_packet();
-    if (init_python_packet(py_packet, PYMSG_CLIENT_ADD, current_client-> port, 0) == -1){
+    if (init_python_packet(py_packet, PYMSG_CLIENT_ADD, current_client-> port, sizeof(uint8_t)) == -1){
         return -1;
     }
+    memcpy(py_packet->data, &guest_color, sizeof(uint8_t));
     if (send_python_packet(py_packet, python_socket) == -1){
         return -1;
     }
@@ -156,6 +164,9 @@ int connect_to_server(const char* ip_server, int port_server,int new_player){
 
 int create_listen_socket(){
     main_port = port_generator();
+    if (main_color == 0) {
+    main_color = color_generator();
+    }
     listen_socket = socket(AF_INET, SOCK_STREAM, 6);
     if (listen_socket == -1){
         perror("socket");
@@ -169,6 +180,7 @@ int create_listen_socket(){
     char* addresse_ip = extractIpAddress();
     printf("[C] IP: %s\n", addresse_ip);
     printf("[C] Port: %d\n", main_port);
+    printf("[C] Color: %d\n", main_color);
 
     struct sockaddr_in listen_addr = {0};
     listen_addr.sin_family = AF_INET;
@@ -188,9 +200,10 @@ int create_listen_socket(){
         return -1;
     }
     python_packet* packet = create_python_packet();
-    if (init_python_packet(packet, PYMSG_REP_PORT, main_port, 0) == -1){
+    if (init_python_packet(packet, PYMSG_REP_PORT, main_port, sizeof(uint8_t)) == -1){
         return -1;
     }
+    memcpy(packet->data, &main_color, sizeof(uint8_t));
     if (send_python_packet(packet, python_socket) == -1){
         return -1;
     }
@@ -283,9 +296,10 @@ int listen_all_client(fd_set *fd_listen){
             // printf("[C]Receiving packet from client with port %d\n", current_client->port);
             if ( receive_packet(packet, current_client->socket_client) == 0){
                 printf("Client with port %d disconnected\n", current_client->port);
+                uint32_t removed_port = current_client->port;
                 remove_client(current_client);
                 python_packet* py_packet = create_python_packet();
-                if (init_python_packet(py_packet, PYMSG_CLIENT_REMOVE, current_client->port, 0) == -1){
+                if (init_python_packet(py_packet, PYMSG_CLIENT_REMOVE, removed_port, 0) == -1){
                     return -1;
                 }
                 if (send_python_packet(py_packet, python_socket) == -1){
@@ -333,18 +347,28 @@ int send_all_ip_port(client* current_client){
     client* current = first_client();
     game_packet* packet = create_game_packet();
     init_game_packet(packet, MSG_REP_IP_PORT, 0);
-    packet -> size = (get_number_of_client() - 1)*sizeof(uint32_t)*2;
-    packet -> data = calloc(packet->size, 1);
     uint32_t* ip_port = get_all_ip_port(current_client);
-    memcpy(packet->data,(char*) ip_port, packet->size);
-    if ( send_game_packet(packet, current_client->socket_client) == -1){
-        return -1;
+    if (ip_port == NULL){
+        packet -> size = 0;
+        packet -> data = NULL;
+        if ( send_game_packet(packet, current_client->socket_client) == -1){
+            return -1;
+        }
+    } else{
+        packet -> size = (get_number_of_client() - 1)*sizeof(uint32_t)*2;
+        printf("The number of clients is %d\n", get_number_of_client() - 1);
+        packet -> data = calloc(packet->size, 1);
+        
+        memcpy(packet->data,(char*) ip_port, packet->size);
+        if ( send_game_packet(packet, current_client->socket_client) == -1){
+            return -1;
+        }
     }
     return 0;
 }
 
 int new_connection( client* current_client, game_packet* packet ){
-    if ( port_exist(first_client(), packet->port)){
+    if ( port_exist(first_client(), packet->port) || color_exist(*((uint8_t*)packet->data))){
         if(send_nodata_msg(MSG_BAD_PORT, current_client->socket_client) < 0){
             return -1;
         }
@@ -354,15 +378,20 @@ int new_connection( client* current_client, game_packet* packet ){
 }
 
 int req_connection( client* current_client, game_packet* packet){
+    current_client->color = *((uint8_t*)packet->data);
     current_client->port = packet->port;
     affiche_client(first_client());
-    if ( send_nodata_msg(MSG_CONNECT_OK, current_client->socket_client) < 0){
+    game_packet *packet_rep = create_game_packet();
+    init_game_packet(packet_rep, MSG_CONNECT_OK, sizeof(uint8_t));
+    memcpy(packet_rep->data, &main_color, sizeof(uint8_t));
+    if ( send_game_packet(packet_rep, current_client->socket_client) == -1){
         return -1;
     }
     python_packet* py_packet = create_python_packet();
-    if (init_python_packet(py_packet, PYMSG_CLIENT_ADD, current_client-> port, 0) == -1){
+    if (init_python_packet(py_packet, PYMSG_CLIENT_ADD, current_client-> port, sizeof(uint8_t)) == -1){
         return -1;
     }
+    memcpy(py_packet->data, &current_client->color, sizeof(uint8_t));
     if (send_python_packet(py_packet, python_socket) == -1){
         return -1;
     }
@@ -378,7 +407,16 @@ client* accept_new_client(int listen_socket){
         return NULL;
     }
     client* new_client = add_client(socket_new_client, 0, sockaddr_client);
+    
+    uint8_t color = color_generator();
 
+    game_packet* packet = create_game_packet();
+    init_game_packet(packet, MSG_CONNECT_START, sizeof(uint8_t));
+    memcpy(packet->data, (char*)&color, sizeof(uint8_t));
+
+    if ( send_game_packet(packet, socket_new_client) == -1){
+        return NULL;
+    }
 
     if ( new_client == NULL){
         return NULL;
@@ -392,6 +430,14 @@ client* accept_new_client(int listen_socket){
 
 
 
+}
+
+uint8_t color_generator(){
+    for( int i = 1; i <= 4 ; i++){
+        if ( !color_exist(i) && i != main_color){
+            return i;
+        }
+    }
 }
 
 // int new_connection( client* current_client, game_packet* packet ){

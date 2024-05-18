@@ -14,7 +14,7 @@ class Network:
     def __init__(self):
         self.process = 0
         self.port = 0
-        self.clientList = { "Red": None, "Blue": None, "Green": None, "Purple": None}
+        self.clientList = {"Red": None, "Blue": None, "Green": None, "Purple": None}
         self.c_socket = None
         self.s_socket = None
         self.s_port = random.randint(3000, 4000)
@@ -44,6 +44,9 @@ class Network:
         self.c_socket.close()
         self.s_socket.close()
         self.kill_c_process()
+        for key, value in self.clientList.items():
+            if value != None:
+                self.clientList[key] = None
 
     def run_c_process(self):
         from GameControl.EventManager import EtatJeu
@@ -87,8 +90,8 @@ class Network:
             self.c_socket.setblocking(1)
             data = self.c_socket.recv(pkg.size)
             if len(data):
-                data_size += len(data)
-                pkg.unpackData(data)
+                size += len(data)
+                pkg.toBytes(data)
         print("[Py] [Receive] Type:", pkg.type, "Port:", pkg.port, "Size:", pkg.size)
         self.c_socket.setblocking(1)
         return size
@@ -119,11 +122,24 @@ class Network:
     
     def msg_handler(self, pkg):
         if pkg.type == PYMSG_REP_PORT:
-            self.port = pkg.port
+            self.assign_port(pkg)
         elif pkg.type == PYMSG_CLIENT_ADD:
             self.add_client(pkg)
         elif pkg.type == PYMSG_CLIENT_REMOVE:
             self.remove_client(pkg)
+
+    def assign_port(self, pkg):
+        self.port = pkg.port
+        main_client = Client( self.port, struct.unpack('B', pkg.byte)[0], True)
+        if main_client.color == 1:
+            self.clientList["Red"] = main_client
+        elif main_client.color == 2:
+            self.clientList["Blue"] = main_client
+        elif main_client.color == 3:
+            self.clientList["Green"] = main_client
+        elif main_client.color == 4:
+            self.clientList["Purple"] = main_client
+        print(self.clientList)
 
     def remove_client(self, pkg):
         for key, value in self.clientList.items():
@@ -133,14 +149,15 @@ class Network:
                 break
 
     def add_client(self, pkg):
-        player = Client()
-        player.port = pkg.port
-        for key, value in self.clientList.items():
-            if value == None:
-                self.clientList[key] = player
-                player.color = key
-                break
-        print("[Py] Player", player.color, "added")
+        player = Client(pkg.port, struct.unpack('B', pkg.byte)[0], False)
+        if player.color == 1:
+            self.clientList["Red"] = player
+        elif player.color == 2:
+            self.clientList["Blue"] = player
+        elif player.color == 3:
+            self.clientList["Green"] = player
+        elif player.color == 4:
+            self.clientList["Purple"] = player
 
     @staticmethod
     def getNetworkInstance():
@@ -209,8 +226,8 @@ class Package:
         self.port = struct.unpack('I', data[1:5])[0]
         self.size = struct.unpack('I', data[5:9])[0]
     
-    def unpackData(self, data):
-        self.data = pickle.loads(data)
+    def toBytes(self, data):
+        self.byte = data
 
 class Data:
     def __init__(self, type):
@@ -230,10 +247,11 @@ class BobStatus:
         self.previousPos = [(1, 0), (1, 1)]
 
 class Client:
-    def __init__(self):
-        self.port = 0
-        self.color = 0
+    def __init__(self, port, color, is_this_client):
+        self.port = port
+        self.color = color
         self.listBob = []
+        self.is_this_client = is_this_client
 
     def addBob(self, bob):
         self.listBob.append(bob)

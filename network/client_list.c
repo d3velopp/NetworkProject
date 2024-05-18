@@ -11,6 +11,9 @@ int get_number_of_client(){
     return number_of_client;
 }
 client *first_client(){
+    if (client_list == NULL){
+        return NULL;
+    }
     return client_list;
 }
 
@@ -18,7 +21,7 @@ int affiche_client(){
     client* current_client = client_list;
     while (current_client != NULL){
         printf("--------------------------------------------\n");
-        printf("Client with port %d\n", current_client->port);
+        printf("Client with port %d and color %d\n", current_client->port, current_client->color);
         current_client = current_client->next;
     }
     return 0;
@@ -35,10 +38,24 @@ int port_exist( client* targeted_client, int port){
     return 0;
 }
 
+int color_exist( int color){
+    client* current_client = client_list;
+    while (current_client != NULL){
+        if (current_client->color == color){
+            return 1;
+        }
+        current_client = current_client->next;
+    }
+    return 0;
+}
+
 uint32_t* get_all_ip_port( client* requested_client ){
-    uint32_t* ip_port = calloc( 2*(number_of_client - 1 ), sizeof(uint32_t*));
     client* current_client = first_client();
+    if (current_client == NULL){
+        return NULL;
+    }
     int i = 0;
+    uint32_t* ip_port = calloc( 2*(number_of_client - 1 ), sizeof(uint32_t*));
     while (current_client != NULL){
         if (current_client != requested_client){
             ip_port[2*i] = current_client->port;
@@ -57,6 +74,7 @@ client* add_client( int socket_client, int port, struct sockaddr_in sockaddr_cli
     }
     new_client->socket_client = socket_client;
     new_client->port = port;
+    new_client->color = 0;
     new_client->sockaddr_client = sockaddr_client;
     new_client->next = NULL;
     append_client(new_client);
@@ -118,10 +136,11 @@ int remove_client( client* targeted_client){
             current_client->next = targeted_client->next;
             free(targeted_client);
             close(targeted_client->socket_client);
+            number_of_client -= 1;
             return 0;
-        }
+        } else{
         current_client = current_client->next;
+        }
     }
-    number_of_client -= 1;
     return -1;
 }

@@ -2431,6 +2431,7 @@ def waiting_room( screen, clock):
                 if back_button_rect.collidepoint(event.pos):
                     print(net.port)
                     net.close_socket()
+                    
                     etat.waiting_room = False
                     etat.online_menu = True
                     return
@@ -2449,6 +2450,7 @@ def waiting_room( screen, clock):
             screen.blit(purple, (screen.get_width() // 2 - 100, 500))
         if net.clientList["Red"]:
             screen.blit(red, (screen.get_width() // 2 - 100, 600))
+
         net.listen()
         pg.display.flip()
 

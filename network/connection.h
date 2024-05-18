@@ -27,6 +27,7 @@ typedef uint32_t game_ip;
 static uint16_t main_port = -1;
 static int listen_socket = -1;
 static int python_socket = -1;
+static uint8_t main_color = 0;
 static int s_port = -1; 
 
 extern char* extractIpAddress();
@@ -44,4 +45,5 @@ extern int affiche_all_ip_port(game_packet* packet);
 extern int pymsg_type_handler(python_packet* packet);
 extern int listen_from_python();
 extern int join_room(python_packet* packet);
+extern uint8_t color_generator();
 #endif

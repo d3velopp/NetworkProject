@@ -87,8 +87,8 @@ int send_nodata_msg( const uint8_t type, int socket){
 
 int send_game_packet( game_packet* packet, int socket){
     uint32_t send_size = header_size;
-    int contain_data = has_data(packet);
-    if ( packet -> size > 0 && has_data(packet) && packet -> data != NULL){
+    int contain_data = 0;
+    if ( packet -> size > 0 && packet -> data != NULL){
         send_size += packet -> size;
         contain_data = 1;
     }
@@ -123,7 +123,7 @@ int receive_packet( game_packet *recieve_packet, int socket ){
     if (received_size < header_size || !is_valid_packet(recieve_packet)){
         return -1;
     }
-    if (recieve_packet -> size > 0 && has_data(recieve_packet)){
+    if (recieve_packet -> size > 0){
         recieve_packet -> data = calloc(recieve_packet -> size, 1);
         received_size += recv(socket, recieve_packet -> data, recieve_packet -> size, MSG_WAITALL);
     }

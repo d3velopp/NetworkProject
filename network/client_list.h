@@ -34,5 +34,5 @@ extern void set_max_fd_all_client(fd_set *fd_listen, int *max_fd);
 extern int affiche_client();   
 extern uint32_t* get_all_ip_port(client* current_client); 
 extern int get_number_of_client();
-
+extern int color_exist( int color);
 #endif
