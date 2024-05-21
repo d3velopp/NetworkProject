@@ -105,7 +105,7 @@ int send_game_packet( game_packet* packet, int socket){
         }
     }
     int a = (int) send(socket, buffer, send_size, 0);
-    printf("Sent %d bytes\n", a);
+    // printf("Sent %d bytes\n", a);
     return a;
 
 }
@@ -127,8 +127,8 @@ int receive_packet( game_packet *recieve_packet, int socket ){
         recieve_packet -> data = calloc(recieve_packet -> size, 1);
         received_size += recv(socket, recieve_packet -> data, recieve_packet -> size, MSG_WAITALL);
     }
-    printf("Received %d bytes\n", received_size);
-    flush_socket(socket);
+    // printf("Received %d bytes\n", received_size);
+    // flush_socket(socket);
     return received_size;
 
 

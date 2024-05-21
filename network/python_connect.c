@@ -136,8 +136,7 @@ int receive_python_packet( python_packet *packet, int socket){
         packet -> data = calloc(packet -> size, 1);
         recv_size += recv(socket, packet -> data, packet -> size, 0);
     }
-    flush_python_socket(socket);
-    print_python_packet(packet);
+    // print_python_packet(packet);
     return recv_size;
 
 }
@@ -166,7 +165,7 @@ int send_python_packet( python_packet* packet, int socket){
         }
     }
     int a = (int) send(socket, python_buffer, send_size, 0);
-    printf("[C] Sent %d bytes\n", a);
+    // printf("[C] Sent %d bytes\n", a);
     return a;
 
 }

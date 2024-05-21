@@ -19,11 +19,12 @@ client *first_client(){
 
 int affiche_client(){
     client* current_client = client_list;
+    printf("-----------------Client list-----------------\n");
     while (current_client != NULL){
-        printf("--------------------------------------------\n");
         printf("Client with port %d and color %d\n", current_client->port, current_client->color);
         current_client = current_client->next;
     }
+    printf("-------------------------------------------\n");
     return 0;
 }
 
@@ -126,9 +127,19 @@ int remove_client( client* targeted_client){
         return -1;
     }
     if ( client_list == targeted_client){
-        client_list = NULL;
-        free(targeted_client);
-        return 0;
+        if (client_list->next == NULL){
+            client_list = NULL;
+            free(targeted_client);
+            return 0;
+        }
+        else {
+            client_list = client_list->next;
+            free(targeted_client);
+            close(targeted_client->socket_client);
+            number_of_client -= 1;
+            return 0;
+        }
+
     }
     client* current_client = client_list;
     while (current_client->next != NULL){

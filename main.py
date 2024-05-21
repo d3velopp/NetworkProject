@@ -43,7 +43,6 @@ def main():
         elif etat.playing:
             game = Game.getInstance(screen, clock)
             if etat.game_instance == 0:
-
                 game.createNewGame()
             else: 
                 game.loadGame(etat.game_instance)

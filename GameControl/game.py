@@ -84,7 +84,7 @@ class Game:
             # self.draw()
             if self.setting.simuMode:
                 self.gameController.increaseTick()
-                self.drawSimu() 
+                self.drawSimu()
             else:
                 self.gameController.updateRenderTick()
                 self.draw()

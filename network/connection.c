@@ -14,7 +14,7 @@ int main(int argc, char** argv){
     //     scanf("%d", &port);
     // }
     s_port = atoi(argv[1]);
-    printf("Port: %d\n", s_port);
+    // printf("Port: %d\n", s_port);
     return init_connection();
 }
 
@@ -111,7 +111,7 @@ int connect_to_server(const char* ip_server, int port_server,int new_player){
             close(socket_server);
             return 1;
         }
-        print_game_packet(packet);
+        // print_game_packet(packet);
         if ( packet-> type == MSG_CONNECT_START){
             if ( new_player){
                 main_port = port_generator();
@@ -124,23 +124,25 @@ int connect_to_server(const char* ip_server, int port_server,int new_player){
                     close(socket_server);
                     return -1;
                 }
-            } else {
+            } else {  
                 init_game_packet(packet, MSG_CONNECT_REQ, sizeof(uint8_t));
                 memcpy(packet->data, &main_color, sizeof(uint8_t));
+                // printf("Data for port %d is %d", port_server, *(packet->data) );
                 if ( send_game_packet(packet, socket_server) == -1){
                     printf("Error sending packet\n");
                     close(socket_server);
                     return -1;
                 }
             }
-            main_color = 0;
             packet-> type = MSG_BAD_PORT;
         }
     }
     while ( packet->type != MSG_CONNECT_OK);
     uint8_t guest_color;
     memcpy(&guest_color, packet->data, sizeof(uint8_t));
-    main_color = color;
+    if (new_player){
+        main_color = color;
+    }
     client* current_client = add_client(socket_server, port_server, sock_adresse);
     current_client->color = guest_color;
     python_packet* py_packet = create_python_packet();
@@ -155,7 +157,7 @@ int connect_to_server(const char* ip_server, int port_server,int new_player){
             if ( send_nodata_msg(MSG_REQ_IP_PORT, socket_server) == -1){
                 return -1;
             }
-            printf("Requesting IP and port\n");
+            // printf("Requesting IP and port\n");
         }
     return 0;
 }
@@ -239,11 +241,14 @@ int game_listen(){
                 return -1;
             }
         }
-        if ( FD_ISSET(listen_socket, &fd_listen)){
-            if (accept_new_client(listen_socket) == NULL){
-                return -1;
+        if (get_number_of_client() < 3){
+            if ( FD_ISSET(listen_socket, &fd_listen)){
+                if (accept_new_client(listen_socket) == NULL){
+                    return -1;
+                }
             }
         }
+
         listen_all_client(&fd_listen);
     }
 }
@@ -277,7 +282,7 @@ int join_room(python_packet* packet){
     addr.s_addr = ip_addr;
     char* ip = inet_ntoa(addr);
     u_int32_t port = ip_port[1];
-    printf("Joining room with IP: %s and port: %d\n", ip, port);
+    // printf("Joining room with IP: %s and port: %d\n", ip, port);
     if (connect_to_server(ip, port, 1) == -1){
         return -1;
     }
@@ -308,7 +313,7 @@ int listen_all_client(fd_set *fd_listen){
                 current_client = current_client->next; 
                 continue;
             }
-            print_game_packet(packet);
+            // print_game_packet(packet);
             if ( message_type_handler(packet, current_client) == -1){
                 return -1;
             }
@@ -355,11 +360,11 @@ int send_all_ip_port(client* current_client){
             return -1;
         }
     } else{
-        packet -> size = (get_number_of_client() - 1)*sizeof(uint32_t)*2;
-        printf("The number of clients is %d\n", get_number_of_client() - 1);
+        packet -> size = (get_number_of_client()-1)*sizeof(uint32_t)*2;
+        // printf("The number of clients is %d\n", get_number_of_client() - 1);
         packet -> data = calloc(packet->size, 1);
-        
         memcpy(packet->data,(char*) ip_port, packet->size);
+        // print_game_packet(packet);
         if ( send_game_packet(packet, current_client->socket_client) == -1){
             return -1;
         }
@@ -379,6 +384,7 @@ int new_connection( client* current_client, game_packet* packet ){
 
 int req_connection( client* current_client, game_packet* packet){
     current_client->color = *((uint8_t*)packet->data);
+    printf("Receiving color: %d\n", *((uint8_t*)packet->data));
     current_client->port = packet->port;
     affiche_client(first_client());
     game_packet *packet_rep = create_game_packet();
@@ -421,11 +427,11 @@ client* accept_new_client(int listen_socket){
     if ( new_client == NULL){
         return NULL;
     }
-    int byte = send_nodata_msg(MSG_CONNECT_START, socket_new_client);
-    if ( byte == -1){
-        return NULL;
-    }
-    printf("Connecting to client with port %d and ip address: %s\n", new_client->port, inet_ntoa(sockaddr_client.sin_addr));
+    // int byte = send_nodata_msg(MSG_CONNECT_START, socket_new_client);
+    // if ( byte == -1){
+    //     return NULL;
+    // }
+    // printf("Connecting to client with port %d and ip address: %s\n", new_client->port, inet_ntoa(sockaddr_client.sin_addr));
     return new_client;
 
 
