@@ -15,6 +15,7 @@ class Network:
         self.process = 0
         self.port = 0
         self.clientList = {"Red": None, "Blue": None, "Green": None, "Purple": None}
+        self.this_client = None
         self.c_socket = None
         self.s_socket = None
         self.s_port = random.randint(3000, 4000)
@@ -127,6 +128,11 @@ class Network:
             self.add_client(pkg)
         elif pkg.type == PYMSG_CLIENT_REMOVE:
             self.remove_client(pkg)
+        elif pkg.type == PYMSG_GAME_READY:
+            for key, value in self.clientList.items():
+                if value != None and value.port == pkg.port:
+                    value.ready = True
+                    break
 
     def assign_port(self, pkg):
         self.port = pkg.port
@@ -139,6 +145,7 @@ class Network:
             self.clientList["Green"] = main_client
         elif main_client.color == 4:
             self.clientList["Purple"] = main_client
+        self.this_client = main_client
         print(self.clientList)
 
     def remove_client(self, pkg):
@@ -251,6 +258,7 @@ class Client:
         self.port = port
         self.color = color
         self.listBob = []
+        self.ready = False
         self.is_this_client = is_this_client
 
     def addBob(self, bob):

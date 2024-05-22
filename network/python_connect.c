@@ -136,7 +136,7 @@ int receive_python_packet( python_packet *packet, int socket){
         packet -> data = calloc(packet -> size, 1);
         recv_size += recv(socket, packet -> data, packet -> size, 0);
     }
-    // print_python_packet(packet);
+    print_python_packet(packet);
     return recv_size;
 
 }

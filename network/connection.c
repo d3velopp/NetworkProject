@@ -222,7 +222,9 @@ int game_listen(){
         if (listen_socket != -1){
             FD_SET(listen_socket, &fd_listen);
         }
-        FD_SET(python_socket, &fd_listen);
+        if (python_socket != -1){
+            FD_SET(python_socket, &fd_listen);
+        }
         set_max_fd_all_client(&fd_listen, &max_fd);
         if (max_fd < listen_socket){
             max_fd = listen_socket;
@@ -236,6 +238,7 @@ int game_listen(){
             perror("select");
             return -1;
         }
+
         if (FD_ISSET(python_socket, &fd_listen)){
             if (listen_from_python() == -1){
                 return -1;
@@ -248,8 +251,9 @@ int game_listen(){
                 }
             }
         }
-
         listen_all_client(&fd_listen);
+
+        
     }
 }
 
@@ -272,6 +276,17 @@ int pymsg_type_handler(python_packet* packet){
             return create_listen_socket();
         case PYMSG_JOIN_ROOM:
             return join_room(packet);
+        case PYMSG_GAME_READY:
+            // client* current_client = first_client();
+            // game_packet* new_packet = create_game_packet();
+            // init_game_packet(new_packet, MSG_GAME_READY, 0);
+            // while(current_client != NULL){
+            //     if ( send_game_packet(new_packet, current_client->socket_client) == -1){
+            //         return -1;
+            //     }
+            //     current_client = current_client->next;
+            // }
+            return send_to_all_client(packet);
     }
 }
 
@@ -292,6 +307,31 @@ int join_room(python_packet* packet){
     return 1;
 }
 
+int send_to_all_client(python_packet* packet){
+    client* current_client = first_client();
+    game_packet* new_packet = encapsulate_python_packet(packet);
+    print_game_packet(new_packet);
+    while(current_client != NULL){
+        if ( send_game_packet(new_packet, current_client->socket_client) == -1){
+            return -1;
+        }
+        printf("Send %d bytes to client with port %d\n", new_packet->size, current_client->port);
+        current_client = current_client->next;
+    }
+    return 0;
+}
+
+game_packet* encapsulate_python_packet( python_packet* packet){
+    game_packet* new_packet = create_game_packet();
+    init_game_packet( new_packet, MSG_GAME_UPDATE, sizeof(uint8_t) + 2*sizeof(uint32_t) + packet->size);
+    memcpy(new_packet->data,  &(packet->type), sizeof(uint8_t));
+    memcpy(new_packet->data + sizeof(uint8_t),  &(packet->port), sizeof(uint32_t));
+    memcpy(new_packet->data + sizeof(uint8_t) + sizeof(uint32_t), &(packet->size), sizeof(uint32_t));
+    if (packet->size){
+        memcpy(new_packet->data + sizeof(uint8_t) + 2*sizeof(uint32_t), packet->data, packet->size);
+    }
+    return new_packet;
+}
 
 int listen_all_client(fd_set *fd_listen){
     client* current_client = first_client();
@@ -334,6 +374,24 @@ int message_type_handler(game_packet* packet, client* current_client){
             return send_all_ip_port(current_client);
         case MSG_REP_IP_PORT:
             return affiche_all_ip_port(packet);
+        case MSG_GAME_UPDATE:
+            return send_to_python(packet);
+        case MSG_GAME_READY:
+            printf("Game ready\n");
+    }
+}
+
+int send_to_python(game_packet* packet){
+    python_packet* py_packet = create_python_packet();
+    memcpy(&(py_packet->type), packet->data, sizeof(uint8_t));
+    memcpy(&(py_packet->port), packet->data + sizeof(uint8_t), sizeof(uint32_t));
+    memcpy(&(py_packet->size), packet->data + sizeof(uint8_t) + sizeof(uint32_t), sizeof(uint32_t));
+    if (py_packet->size){
+        py_packet->data = calloc(py_packet->size, 1);
+        memcpy(py_packet->data, packet->data + sizeof(uint8_t) + 2*sizeof(uint32_t), py_packet->size);
+    }    
+    if (send_python_packet(py_packet, python_socket) == -1){
+        return -1;
     }
 }
 
@@ -384,7 +442,6 @@ int new_connection( client* current_client, game_packet* packet ){
 
 int req_connection( client* current_client, game_packet* packet){
     current_client->color = *((uint8_t*)packet->data);
-    printf("Receiving color: %d\n", *((uint8_t*)packet->data));
     current_client->port = packet->port;
     affiche_client(first_client());
     game_packet *packet_rep = create_game_packet();

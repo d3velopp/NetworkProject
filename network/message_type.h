@@ -12,7 +12,9 @@
 
 #define MSG_BAD_PORT 13
 
-#define MSG_GAME 21
+#define MSG_GAME_READY 21
+
+#define MSG_GAME_UPDATE 22
 
 #define PYMSG_REQ_PORT 30
 
@@ -27,3 +29,8 @@
 #define PYMSG_CLIENT_ADD 41
 
 #define PYMSG_CLIENT_REMOVE 42
+
+#define PYMSG_GAME_READY 50
+
+#define PYMSG_GAME_END 51
+

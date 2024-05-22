@@ -46,4 +46,7 @@ extern int pymsg_type_handler(python_packet* packet);
 extern int listen_from_python();
 extern int join_room(python_packet* packet);
 extern uint8_t color_generator();
+extern game_packet* encapsulate_python_packet( python_packet* packet);
+extern int send_to_all_client(python_packet* packet);
+int send_to_python(game_packet* packet);
 #endif

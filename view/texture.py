@@ -55,6 +55,27 @@ def loadRedLeft():
     # redLeft = pg.transform.scale(redLeft, (redLeft.get_width()*1, redLeft.get_height()*1))
     return redLeft
 
+def loadPurpleRight():
+    purpleRight = pg.image.load(setting.getImagePath() + "Purple-modified.png").convert_alpha()
+    # purpleRight = pg.transform.scale(purpleRight, (purpleRight.get_width()*1, purpleRight.get_height()*1))
+    return purpleRight
+
+def loadGreenRight():
+    greenRight = pg.image.load(setting.getImagePath() + "Green-modified.png").convert_alpha()
+    # greenRight = pg.transform.scale(greenRight, (greenRight.get_width()*1, greenRight.get_height()*1))
+    return greenRight
+
+def loadBlueRight():
+    blueRight = pg.image.load(setting.getImagePath() + "Blue-modified.png").convert_alpha()
+    # blueRight = pg.transform.scale(blueRight, (blueRight.get_width()*1, blueRight.get_height()*1))
+    return blueRight
+
+def loadRedRight():
+    redRight = pg.image.load(setting.getImagePath() + "Red-modified.png").convert_alpha()
+    # redRight = pg.transform.scale(redRight, (redRight.get_width()*1, redRight.get_height()*1))
+    return redRight
+
+
 def loadFoodImage():
     food = pg.image.load(setting.getImagePath() + "food.png").convert_alpha()
     # food = pg.transform.scale(food, (food.get_width()*0.25, food.get_height()*0.25))

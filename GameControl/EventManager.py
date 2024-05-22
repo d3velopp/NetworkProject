@@ -2403,15 +2403,24 @@ def waiting_room( screen, clock):
     global selected_value_index, grid_value_rects, input_text, input_active
     input_active = False
     input_text = ""
+    etat = EtatJeu.getEtatJeuInstance()
+    net = Network.getNetworkInstance()
     back_button_rect = pg.Rect(20, 20, button_width, button_height)
+    start_button_rect = pg.Rect((screen.get_width() - button_width) // 2, (screen.get_height() - button_height) //2 + 250,button_width, button_height)
+    connected_players = [player for player in net.clientList.values() if player is not None]
+    
+    pressed = False
 
     green = loadGreenLeft()
     blue = loadBlueLeft()
     purple = loadPurpleLeft()
     red = loadRedLeft()
 
-    etat = EtatJeu.getEtatJeuInstance()
-    net = Network.getNetworkInstance()
+    greenblack = loadGreenRight()
+    blueblack = loadBlueRight()
+    purpleblack = loadPurpleRight()
+    redblack = loadRedRight()
+
     net.init_listen()
     if etat.create_room:
         packet = Package(PYMSG_CREATE_ROOM)
@@ -2423,6 +2432,8 @@ def waiting_room( screen, clock):
         net.send_package(pkg)
     start_time = time.time()
     while etat.waiting_room:
+        connected_players = [player for player in net.clientList.values() if player is not None]
+        ready_to_play = len(connected_players) == 4
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 pg.quit()
@@ -2431,25 +2442,47 @@ def waiting_room( screen, clock):
                 if back_button_rect.collidepoint(event.pos):
                     print(net.port)
                     net.close_socket()
-                    
                     etat.waiting_room = False
                     etat.online_menu = True
                     return
-    
+                if ready_to_play and start_button_rect.collidepoint(event.pos):
+                    #send packet to start game
+                    if not pressed:
+                        pkg = Package(PYMSG_GAME_READY)
+                        pkg.packData()
+                        net.send_package(pkg)
+                        net.this_client.ready = True
+                        pressed = True 
         #timer:
+        
+        # Vérifiez si le nombre de joueurs est suffisant pour jouer
         
         
         screen.blit(background_image2, (0, 0))
         draw_transparent_button("BACK", back_button_rect, 128)
 
         if net.clientList["Green"]:
-            screen.blit(green, (screen.get_width() // 2 - 100, 300))
+            if net.clientList["Green"].ready:
+                screen.blit(green, (screen.get_width() // 2 - 100, 300))
+            else:
+                screen.blit(greenblack, (screen.get_width() // 2 - 100, 300))
         if net.clientList["Blue"]:
-            screen.blit(blue, (screen.get_width() // 2 - 100, 400))
+            if net.clientList["Blue"].ready:
+                screen.blit(blue, (screen.get_width() // 2 - 100, 400))
+            else:
+                screen.blit(blueblack, (screen.get_width() // 2 - 100, 400))
         if net.clientList["Purple"]:
-            screen.blit(purple, (screen.get_width() // 2 - 100, 500))
+            if net.clientList["Purple"].ready:
+                screen.blit(purple, (screen.get_width() // 2 - 100, 500))
+            else:
+                screen.blit(purpleblack, (screen.get_width() // 2 - 100, 500))
         if net.clientList["Red"]:
-            screen.blit(red, (screen.get_width() // 2 - 100, 600))
+            if net.clientList["Red"].ready:
+                screen.blit(red, (screen.get_width() // 2 - 100, 600))
+            else:
+                screen.blit(redblack, (screen.get_width() // 2 - 100, 600))
+        if ready_to_play and not pressed:
+            draw_transparent_button("PLAY", start_button_rect, 128)
 
         net.listen()
         pg.display.flip()
