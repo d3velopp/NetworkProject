@@ -41,6 +41,7 @@ class Game_Online:
         self.gameController.createWorld(self.setting.getGridLength(),self.setting.getGridLength()) 
         self.camera = Camera(self.width, self.height) 
         self.gameController.respawnFood()
+        self.gameController.nbBobPut = 5
     
     def loadGame(self, saveNumber):
         loadSetting(saveNumber)
@@ -99,8 +100,9 @@ class Game_Online:
                     for coord in listRect:
                         if coord[1][0] <= mouse_x <= coord[1][0] + 64 and coord[1][1] + 8 <= mouse_y <= coord[1][1] + 24:
                             if coord[0].territoire == self.network.this_client.color:
-                                self.gameController.add_bob_online(coord[0])
-
+                                if self.gameController.nbBobPut > 0:
+                                    self.gameController.add_bob_online(coord[0])
+                                    self.gameController.nbBobPut -= 1   
             self.gameController.updateRenderTick()
 
 

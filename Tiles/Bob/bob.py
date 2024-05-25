@@ -58,11 +58,13 @@ class Bob:
     
     ####################### Reproduction #####################################
     def reproduce(self):
+        from network.network import Network
         newBob = Bob()
         newBob.energy = self.setting.getBobNewbornEnergy()
         newBob.mass = round(random.uniform(self.mass - self.setting.getMassVariation(), self.mass + self.setting.getMassVariation()), 2)
         newBob.velocity = round(random.uniform(self.velocity - self.setting.getVelocityVariation(), self.velocity + self.setting.getVelocityVariation()), 2)
         newBob.speed = self.velocity
+        newBob.color = Network.getNetworkInstance().this_client.color
         newBob.vision = round(random.choice([max(0, self.vision - self.setting.getVisionVariation()), self.vision, self.vision + self.setting.getVisionVariation()]), 2)  
         newBob.memoryPoint = round(random.choice([max(0, self.memoryPoint - self.setting.getMemoryVariation()), self.memoryPoint, self.memoryPoint + self.setting.getMemoryVariation()]), 2)
         newBob.spawn(self.CurrentTile)

@@ -306,6 +306,8 @@ class GameControl:
             self.currentTick = 0
             self.increaseDay()
 
+        if self.currentTick % 10 == 0:
+            self.nbBobPut = self.nbBobPut + 1
         # At the end of the tick, we have listBob, newBornQueue, diedQueue
         
     def increaseDay(self):
