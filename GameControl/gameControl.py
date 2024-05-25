@@ -156,6 +156,23 @@ class GameControl:
             bob.spawn(tile)
         # self.pushToList()
 
+    def add_bob_online(self, tile ):
+        from Tiles.Bob.bob import Bob
+        bob = Bob()
+        bob.setCurrentTile(tile)
+        bob.PreviousTiles.append(tile)
+        bob.CurrentTile.addBob(bob)
+        bob.setEnergy(100)
+        bob.setMass(1)
+        bob.setVision(0)
+        bob.setVelocity(1)
+        bob.setMemoryPoint(1)
+        bob.determineNextTile()
+        self.getListBobs().append(bob)
+        self.setNbBobs(self.getNbBobs() + 1)
+        self.setNbBobsSpawned(self.getNbBobsSpawned() + 1)
+
+
     def eatingTest(self):
         from Tiles.Bob.bob import Bob
         x1 = random.randint(0, self.setting.getGridLength() - 1)
@@ -209,7 +226,14 @@ class GameControl:
                 world.append([])
                 for j in range(lengthY):
                     tile = Tile(gridX=i,gridY= j)
-                    
+                    if i <= lengthX // 2 - 1  and j <= lengthY // 2 -1:
+                        tile.territoire = 1
+                    elif i <= lengthX // 2 - 1  and j>= lengthY // 2:
+                        tile.territoire = 2
+                    elif i >= lengthX // 2 and j<= lengthY // 2 - 1:
+                        tile.territoire = 3
+                    elif i >= lengthX // 2 and j >= lengthY // 2:
+                        tile.territoire = 4
                     world[i].append(tile)
         self.setMap(world)
     
@@ -310,7 +334,6 @@ class GameControl:
         return GameControl.instance
 
     # def update():
-
 
 
 

@@ -20,6 +20,7 @@ class Tile:
         self.gridX = gridX
         self.gridY = gridY
         self.listBob : list['Bob'] = []
+        self.territoire = None
         # self.listFood : list["Food"] = []
 
         CartCoord = [(gridX*self.setting.getTileSize(), gridY*self.setting.getTileSize()), 
