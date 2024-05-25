@@ -1661,6 +1661,10 @@ def createBob(tile):
 
         
 def drawModifiable(surface, camera):
+    etat = EtatJeu.getEtatJeuInstance()
+    net = Network.getNetworkInstance()
+
+    
     global mod_food, mod_bob, new_object_dict
     textureImg = loadGrassImage()
     flowImg = loadFlowerImage()
@@ -1668,9 +1672,16 @@ def drawModifiable(surface, camera):
     darkFlower = loadDarkFlowerImage()
     brightGrass = loadGrassBrightImage()
     brightFlower = loadFlowerBrightImage()
-
+    
+    net =Network.getNetworkInstance()
+    etat=EtatJeu.getEtatJeuInstance()
     for row in gameController.getMap(): # x is a list of a double list Map
         for tile in row: # tile is an object in list
+            territoire_true = net.this_client.color == 1 and tile.gridX < setting.gridLength//2 and tile.gridY < setting.gridLength//2 or\
+                        net.this_client.color == 2 and tile.gridX < setting.gridLength//2 and setting.gridLength//2 <= tile.gridY or\
+                        net.this_client.color == 3 and setting.gridLength//2 <= tile.gridX and setting.gridLength//2 <= tile.gridY or \
+                        net.this_client.color == 4 and setting.gridLength//2 <= tile.gridX and tile.gridY < setting.gridLength//2 
+    
             (x, y) = tile.getRenderCoord()
             offset = (x + setting.getSurfaceWidth()/2 , y + setting.getTileSize())
             a,b = offset
@@ -1686,11 +1697,12 @@ def drawModifiable(surface, camera):
                     else:
                         surface.blit(darkGrass, offset)
                 if tile.hover:
-                    if tile.flower:
-                        surface.blit(brightFlower, offset)
-                    else:
-                        surface.blit(brightGrass, offset)
-                    tile.hover = False
+                    if not etat.online_game or territoire_true:
+                        if tile.flower:
+                            surface.blit(brightFlower, offset)
+                        else:
+                            surface.blit(brightGrass, offset)
+                        tile.hover = False
             else: pass
 
     greenLeft = loadGreenLeft()
@@ -1835,6 +1847,7 @@ def drawModifiable(surface, camera):
         position = (X , Y + setting.getTileSize() )
         a,b = position
         if -64 <= (a + camera.scroll.x) <= 1920 and -64 <= (b + camera.scroll.y)  <= 1080:
+            
             bar_width = int((food.foodEnergy / setting.getFoodEnergy()) * 50)
             pg.draw.rect(surface, (0, 0, 255), (position[0] + 5, position[1] - 5, bar_width, 5))
             surface.blit(foodTexture, position)
@@ -1846,11 +1859,18 @@ def drawModifiable(surface, camera):
         listRect = []
         for row in gameController.getMap():
             for tile in row:
+                 
+                territoire_true = net.this_client.color == 1 and tile.gridX < setting.gridLength//2 and tile.gridY < setting.gridLength//2 or\
+                        net.this_client.color == 2 and tile.gridX < setting.gridLength//2 and setting.gridLength//2 <= tile.gridY or\
+                        net.this_client.color == 3 and setting.gridLength//2 <= tile.gridX and setting.gridLength//2 <= tile.gridY or \
+                        net.this_client.color == 4 and setting.gridLength//2 <= tile.gridX and tile.gridY < setting.gridLength//2 
+    
                 (x,y) = tile.getRenderCoord()
                 offset = ( x + setting.getSurfaceWidth()//2 , y + setting.getTileSize()  ) 
                 a, b = offset
                 if -64 <= (a + camera.scroll.x) <= 1920 and -64 <= (b + camera.scroll.y)  <= 1080:
-                    listRect.append((tile,(a + camera.scroll.x, b + camera.scroll.y)))
+                    if not etat.online_game or territoire_true: 
+                        listRect.append((tile,(a + camera.scroll.x, b + camera.scroll.y)))
 
         for coord in listRect:
             if coord[1][0] <= mouse_x <= coord[1][0] + 64 and coord[1][1] + 8 <= mouse_y <= coord[1][1] + 24:
@@ -1902,12 +1922,18 @@ def drawModifiable(surface, camera):
         surface.blit(foodTexture, (mouse_x - foodTexture.get_width()//2 - camera.scroll.x, mouse_y - foodTexture.get_height()//2 - camera.scroll.y))
         listRect = []
         for row in gameController.getMap():
-            for tile in row:
+            for tile in row: 
+                territoire_true = net.this_client.color == 1 and tile.gridX < setting.gridLength//2 and tile.gridY < setting.gridLength//2 or\
+                        net.this_client.color == 2 and tile.gridX < setting.gridLength//2 and setting.gridLength//2 <= tile.gridY or\
+                        net.this_client.color == 3 and setting.gridLength//2 <= tile.gridX and setting.gridLength//2 <= tile.gridY or \
+                        net.this_client.color == 4 and setting.gridLength//2 <= tile.gridX and tile.gridY < setting.gridLength//2 
+
                 (x,y) = tile.getRenderCoord()
                 offset = ( x + setting.getSurfaceWidth()//2 , y + setting.getTileSize()  ) 
                 a, b = offset
                 if -64 <= (a + camera.scroll.x) <= 1920 and -64 <= (b + camera.scroll.y)  <= 1080:
-                    listRect.append((tile,(a + camera.scroll.x, b + camera.scroll.y)))
+                    if not etat.online_game or territoire_true:
+                        listRect.append((tile,(a + camera.scroll.x, b + camera.scroll.y)))
         for coord in listRect:
             if coord[1][0] <= mouse_x <= coord[1][0] + 64 and coord[1][1] + 8 <= mouse_y <= coord[1][1] + 24:
                 print(coord[0].gridX, coord[0].gridY)
