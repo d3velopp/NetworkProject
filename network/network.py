@@ -57,7 +57,7 @@ class Network:
             print("Client not found")
             etat.kill()
             return
-        c_file = [path, str(self.s_port)]
+        c_file = [path, str(self.s_port)] # ./client 1356
         self.process = subprocess.Popen(c_file)
 
     def accept_socket(self):

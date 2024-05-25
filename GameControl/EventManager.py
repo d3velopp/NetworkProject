@@ -43,13 +43,13 @@ class EtatJeu:
         self.open_menu = True
         self.online_menu = False
         self.waiting_room = False
+        self.online_game = False
     def kill(self):
         self.running = False
         self.playing = False
         self.game_instance = 0
         self.open_menu = False
         self.online_menu = False
-
 
     @staticmethod
     def getEtatJeuInstance():
@@ -2407,9 +2407,6 @@ def waiting_room( screen, clock):
     net = Network.getNetworkInstance()
     back_button_rect = pg.Rect(20, 20, button_width, button_height)
     start_button_rect = pg.Rect((screen.get_width() - button_width) // 2, (screen.get_height() - button_height) //2 + 250,button_width, button_height)
-    connected_players = [player for player in net.clientList.values() if player is not None]
-    
-    pressed = False
 
     green = loadGreenLeft()
     blue = loadBlueLeft()
@@ -2433,7 +2430,6 @@ def waiting_room( screen, clock):
     start_time = time.time()
     while etat.waiting_room:
         connected_players = [player for player in net.clientList.values() if player is not None]
-        ready_to_play = len(connected_players) == 4
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 pg.quit()
@@ -2445,14 +2441,13 @@ def waiting_room( screen, clock):
                     etat.waiting_room = False
                     etat.online_menu = True
                     return
-                if ready_to_play and start_button_rect.collidepoint(event.pos):
-                    #send packet to start game
-                    if not pressed:
-                        pkg = Package(PYMSG_GAME_READY)
-                        pkg.packData()
-                        net.send_package(pkg)
-                        net.this_client.ready = True
-                        pressed = True 
+                if start_button_rect.collidepoint(event.pos):
+                    pkg = Package(PYMSG_GAME_READY)
+                    pkg.packData()
+                    net.send_package(pkg)
+                    net.this_client.ready = True
+                    etat.waiting_room = False
+                    etat.online_game = True
         #timer:
         
         # Vérifiez si le nombre de joueurs est suffisant pour jouer
@@ -2460,7 +2455,7 @@ def waiting_room( screen, clock):
         
         screen.blit(background_image2, (0, 0))
         draw_transparent_button("BACK", back_button_rect, 128)
-
+        draw_transparent_button("PLAY", start_button_rect, 128)
         if net.clientList["Green"]:
             if net.clientList["Green"].ready:
                 screen.blit(green, (screen.get_width() // 2 - 100, 300))
@@ -2481,8 +2476,7 @@ def waiting_room( screen, clock):
                 screen.blit(red, (screen.get_width() // 2 - 100, 600))
             else:
                 screen.blit(redblack, (screen.get_width() // 2 - 100, 600))
-        if ready_to_play and not pressed:
-            draw_transparent_button("PLAY", start_button_rect, 128)
+
 
         net.listen()
         pg.display.flip()

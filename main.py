@@ -2,6 +2,7 @@
 import pygame as pg
 from GameControl.game import Game
 from GameControl.EventManager import show_menu, EtatJeu, open_network_setting, waiting_room
+from GameControl.game_online import Game_Online
 from pygame.locals import *
 # from GameControl.inputManager import *
 from GameControl.setting import Setting
@@ -51,6 +52,13 @@ def main():
             open_network_setting(screen, clock)
         elif etat.waiting_room:
             waiting_room(screen, clock)
+        elif etat.online_game:
+            game_online = Game_Online.getInstance(screen, clock)
+            if etat.game_instance ==0:
+                game_online.createNewGame()
+            else: 
+                game_online.loadGame(etat.game_instance)
+            game_online.run()
         
 
             
