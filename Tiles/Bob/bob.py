@@ -10,7 +10,7 @@ class Bob:
     id = 0
     def __init__(self):
         self.setting = Setting.getSettings()
-
+        self.color = 0 
         self.id = Bob.id
         Bob.id += 1
         self.age = 0
@@ -154,9 +154,15 @@ class Bob:
 
 ################### Interact with other bobs ###########################
     def canEat(self, bob: 'Bob') -> bool:
-        return bob.mass * 3 / 2 < self.mass
+        if GameControl.getInstance().is_online:
+            return bob.mass * 3 / 2 < self.mass and self.color != bob.color
+        else:
+            return bob.mass * 3 / 2 < self.mass
     
     def eat(self, bob: 'Bob'):
+        ############################ Envoyer message de mort
+
+        ######################################################
         bob.PreviousTile = bob.CurrentTile
         self.energy = min(self.setting.getBobMaxEnergy(), self.energy + 1/2 * bob.energy * (1 - bob.mass / self.mass))
         bob.die()

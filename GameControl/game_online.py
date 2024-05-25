@@ -166,6 +166,7 @@ class Game_Online:
         greenLeft = loadGreenLeft()
         blueLeft = loadBlueLeft()
         purpleLeft = loadPurpleLeft()
+        redLeft = loadRedLeft()
 
         explode1 = loadExplosionImage()[1]
         explode2 = loadExplosionImage()[2]
@@ -198,9 +199,14 @@ class Game_Online:
                             if -64 <= (a + camera.scroll.x) <= 1920 and -64 <= (b + camera.scroll.y)  <= 1080:
                                 bar_width = int((bob.energy / bob.energyMax) * 50)
                                 pg.draw.rect(surface, (255, 0, 0), (finish[0], finish[1] - 5, bar_width, 5))
-                                if bob.isHunting:
-                                    surface.blit(purpleLeft, finish)
-                                else: surface.blit(greenLeft, finish)
+                                if bob.color == 1:
+                                    surface.blit(redLeft, finish)
+                                elif bob.color == 2:
+                                    surface.blit(blueLeft, finish)
+
+
+
+
                             else: pass
                         else:
                             for i in range( nbInteval):
@@ -214,9 +220,10 @@ class Game_Online:
                                     if -64 <= (a + camera.scroll.x) <= 1920 and -64 <= (b + camera.scroll.y)  <= 1080:
                                         bar_width = int((bob.energy / bob.energyMax) * 50)
                                         pg.draw.rect(surface, (255, 0, 0), (pos[0], pos[1] - 5, bar_width, 5))
-                                        if bob.isHunting:
-                                            surface.blit(purpleLeft, pos)
-                                        else: surface.blit(greenLeft, pos)
+                                        if bob.color == 1:
+                                            surface.blit(redLeft, pos)
+                                        elif bob.color == 2:
+                                            surface.blit(blueLeft, pos)
                                     else: pass
                                 else: pass
                     else:
@@ -227,9 +234,10 @@ class Game_Online:
                         if -64 <= (a + camera.scroll.x) <= 1920 and -64 <= (b + camera.scroll.y)  <= 1080:
                             bar_width = int((bob.energy / bob.energyMax) * 50)
                             pg.draw.rect(surface, (255, 0, 0), (finish[0], finish[1] - 5, bar_width, 5))
-                            if bob.isHunting:
-                                surface.blit(purpleLeft, finish)
-                            else: surface.blit(greenLeft, finish)
+                            if bob.color == 1:
+                                surface.blit(redLeft, finish)
+                            elif bob.color == 2:
+                                surface.blit(blueLeft, finish)
                         else: pass
         for bob in self.gameController.diedQueue:
             (x, y) = bob.getPreviousTile().getRenderCoord()
@@ -313,8 +321,14 @@ class Game_Online:
         mouse_x, mouse_y = pg.mouse.get_pos()
         camera.update()
         ##### Can lam #####
-
-        surface.blit(greenLeft, (mouse_x - greenLeft.get_width()//2 - camera.scroll.x, mouse_y - greenLeft.get_height()//2 - camera.scroll.y))
+        if net.this_client.color == 1:
+            surface.blit(redLeft, (mouse_x - redLeft.get_width()//2 - camera.scroll.x, mouse_y - redLeft.get_height()//2 - camera.scroll.y))
+        if net.this_client.color == 2:
+            surface.blit(blueLeft, (mouse_x - blueLeft.get_width()//2 - camera.scroll.x, mouse_y - blueLeft.get_height()//2 - camera.scroll.y))
+        if net.this_client.color == 3:
+            surface.blit(greenLeft, (mouse_x - greenLeft.get_width()//2 - camera.scroll.x, mouse_y - greenLeft.get_height()//2 - camera.scroll.y))
+        if net.this_client.color == 4:
+            surface.blit(purpleLeft, (mouse_x - purpleLeft.get_width()//2 - camera.scroll.x, mouse_y - purpleLeft.get_height()//2 - camera.scroll.y))
         
         ######################
         

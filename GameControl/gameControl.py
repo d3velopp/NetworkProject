@@ -2,6 +2,7 @@ import random
 # from GameControl.settings import *
 import matplotlib.pyplot as plt
 from GameControl.setting import Setting
+from network.network import Network
 # from view.graph import *
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -15,7 +16,9 @@ class GameControl:
     #initialisation of grids:
     def __init__(self):
         # raise Exception("This class is a singleton!")
+        self.is_online = False
         self.setting = Setting.getSettings()
+        self.network = Network.getNetworkInstance()
         self.grid : list[list['Tile']] = None
         self.nbBobs: 'int'= 0
         self.nbBobsSpawned = 0
@@ -41,12 +44,17 @@ class GameControl:
         self.nbVeloce = 0
         self.nbVision = 0
         self.nbEnergy = 0
+        self.nbBobPut = 0
         # self.graph = Graph()
 ################################# Graph methods ########################################
     def getMasses(self) -> list[float]:
         masses = [bob.getMass() for bob in self.getListBobs()]
         return masses
     
+    def getMyBobs(self) -> list['Bob']:
+        bobs = [bob for bob in self.getListBobs() if bob.color == self.network.this_client.color]
+        return bobs
+
     def getVeloce(self) -> list[float]:
         veloce = [bob.getVelocity() for bob in self.getListBobs()]
         return veloce
@@ -158,6 +166,7 @@ class GameControl:
 
     def add_bob_online(self, tile ):
         from Tiles.Bob.bob import Bob
+        from network.network import Network
         bob = Bob()
         bob.setCurrentTile(tile)
         bob.PreviousTiles.append(tile)
@@ -171,7 +180,7 @@ class GameControl:
         self.getListBobs().append(bob)
         self.setNbBobs(self.getNbBobs() + 1)
         self.setNbBobsSpawned(self.getNbBobsSpawned() + 1)
-
+        bob.color = Network.getNetworkInstance().this_client.color
 
     def eatingTest(self):
         from Tiles.Bob.bob import Bob
