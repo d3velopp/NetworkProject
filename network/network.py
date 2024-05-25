@@ -235,7 +235,12 @@ class Package:
 
     def toBytes(self, data):
         self.byte = data
+
+    def extractData(self):
         self.data = pickle.loads(self.byte)
+
+    
+
 
 class Data:
     def __init__(self, type):
