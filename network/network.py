@@ -212,9 +212,7 @@ class Package:
             return self.byte
         else:
             dat = pickle.dumps(self.data)
-            self.size = len(dat)
-            self.packHeader()
-            self.byte += dat
+            self.pushData(dat)
             return self.byte
     
     def packHeader(self):
@@ -223,8 +221,8 @@ class Package:
         self.byte += struct.pack('I',self.size)
 
 
-    def concatData(self, data):
-        self.size += len(data)
+    def pushData(self, data):
+        self.size = len(data)
         self.packHeader()
         self.byte += data
 
@@ -232,9 +230,12 @@ class Package:
         self.type = struct.unpack('B', data[0:1])[0]
         self.port = struct.unpack('I', data[1:5])[0]
         self.size = struct.unpack('I', data[5:9])[0]
-    
+        self.byte = None
+
+
     def toBytes(self, data):
         self.byte = data
+        self.data = pickle.loads(self.byte)
 
 class Data:
     def __init__(self, type):
@@ -243,6 +244,7 @@ class Data:
 
     def setData(self, data):
         self.data = data
+
 
 class BobStatus:
     def __init__(self):
@@ -266,3 +268,16 @@ class Client:
     
     def removeBob(self, bob):
         self.listBob.remove(bob)
+
+# class AllPlayerProperty:
+#     def __init__(self, nb_bob, list_bob_settings, nb_food, list_food_settings):
+#         self.Nb_BOB = nb_bob
+#         self.List_BOB_COORD = list_bob_settings[0]
+#         self.List_BOB_ID = list_bob_settings[1]
+#         self.List_BOB_MASS = list_bob_settings[2]
+#         self.List_BOB_PERCEP = list_bob_settings[3]
+#         self.List_BOB_MEM = list_bob_settings[4]
+#         self.List_BOB_SPEED = list_bob_settings[5]
+#         self.List_BOB_ENERGY = list_bob_settings[6]
+#         self.Nb_FOOD = nb_food
+#         self.List_FOOD_COORD = list_food_settings[0]

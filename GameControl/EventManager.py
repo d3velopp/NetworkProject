@@ -2451,7 +2451,7 @@ def waiting_room( screen, clock):
     else:
         pkg = Package(PYMSG_JOIN_ROOM)
         pkg.packData()
-        pkg.concatData(net.pack_ip_port(ip_port_dict["IP"], ip_port_dict["PORT"]))
+        pkg.pushData(net.pack_ip_port(ip_port_dict["IP"], ip_port_dict["PORT"]))
         net.send_package(pkg)
     start_time = time.time()
     while etat.waiting_room:
