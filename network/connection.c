@@ -287,6 +287,14 @@ int pymsg_type_handler(python_packet* packet){
             //     current_client = current_client->next;
             // }
             return send_to_all_client(packet);
+        case PYMSG_GAME_UPDATE:
+            return send_to_all_client(packet);
+        case PYMSG_GAME_PUT:
+            return send_to_all_client(packet);
+        case PYMSG_GAME_MOVE:
+            return send_to_all_client(packet);
+        case PYMSG_GAME_INTERACT:
+            return send_to_all_client(packet);
     }
 }
 

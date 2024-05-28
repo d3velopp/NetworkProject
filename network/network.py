@@ -131,8 +131,60 @@ class Network:
         elif pkg.type == PYMSG_GAME_READY:
             for key, value in self.clientList.items():
                 if value != None and value.port == pkg.port:
+                    value.readyReq = True
+                    break
+        elif pkg.type == PYMSG_GAME_PUT:
+            if self.this_client.readyReq or not self.this_client.ready:
+                for color, client in self.clientList.items():
+                    if client != None and client.port == pkg.port:
+                        client.ready = True
+            else:
+                self.put_bob(pkg)
+        elif pkg.type == PYMSG_GAME_MOVE:
+            if self.this_client.readyReq or not self.this_client.ready:
+                for color, client in self.clientList.items():
+                    if client != None and client.port == pkg.port:
+                        client.ready = True
+            else:
+                self.push_to_move_pkg_queue(pkg)
+        elif pkg.type == PYMSG_GAME_INTERACT:
+            if self.this_client.readyReq or not self.this_client.ready:
+                for color, client in self.clientList.items():
+                    if client != None and client.port == pkg.port:
+                        client.ready = True
+            else:
+                self.push_to_interact_pkg_queue(pkg)
+        elif pkg.type == PYMSG_GAME_STATE:
+            for key, value in self.clientList.items():
+                if value != None and value.port == pkg.port:
                     value.ready = True
                     break
+    
+    def put_bob(self, pkg):
+        from GameControl.gameControl import GameControl
+        game = GameControl.getInstance()
+        pkg.extractData()
+        for data in pkg.data:
+            if data.type != BOB_STATUS:
+                print("Error: Wrong data type")
+            else:
+                game.client_put_bob(data.data)
+
+    def push_to_move_pkg_queue(self, pkg):
+        for key, value in self.clientList.items():
+            if value != None and value.port == pkg.port:
+                value.move_pkg = pkg
+                value.move_package_waiting = True
+                break
+    
+    def push_to_interact_pkg_queue(self, pkg):
+        for key, value in self.clientList.items():
+            if value != None and value.port == pkg.port:
+                value.interact_pkg = pkg
+                value.interact_package_waiting = True
+                break
+
+
 
     def assign_port(self, pkg):
         self.port = pkg.port
@@ -172,17 +224,19 @@ class Network:
             Network.instance = Network()
         return Network.instance
 
+    def destroyNetwork(self):
+        Network.instance = None
 
-def init_package():
-    bob = BobStatus()
-    data1 = Data(1)
-    data1.setData(bob)
-    data2 = Data(2)
-    data2.setData(bob)
-    pkg = Package(0)
-    pkg.addData(data1)
-    pkg.addData(data2)
-    return pkg
+# def init_package():
+#     bob = BobStatus()
+#     data1 = Data(1)
+#     data1.setData(bob)
+#     data2 = Data(2)
+#     data2.setData(bob)
+#     pkg = Package(0)
+#     pkg.addData(data1)
+#     pkg.addData(data2)
+#     return pkg
 
 def ip_to_int(ip_address):
     # Parse the IP address
@@ -211,6 +265,7 @@ class Package:
             self.packHeader()
             return self.byte
         else:
+
             dat = pickle.dumps(self.data)
             self.pushData(dat)
             return self.byte
@@ -239,34 +294,68 @@ class Package:
     def extractData(self):
         self.data = pickle.loads(self.byte)
 
-    
+
 
 
 class Data:
-    def __init__(self, type):
-        self.type = type
+    def __init__(self):
+        self.type = None
         self.data = None
 
     def setData(self, data):
         self.data = data
 
+    def create_bob_die_package(self, bob):
+        self.type = BOB_DIED
+        self.data = [bob.id, bob.color]
+    
+    def create_bob_born_package(self, bob):
+        self.type = BOB_BORN
+        self.data = {'id': bob.id, 'color': bob.color, 'currentTile': bob.CurrentTile.getGameCoord(), "energy": bob.energy, "mass": bob.mass, "velocity": bob.velocity, "speed": bob.speed, "vision": bob.vision, "memoryPoint": bob.memoryPoint }
 
-class BobStatus:
-    def __init__(self):
-        self.id = 1
-        self.energy = 100
-        self.mass = 100
-        self.velolcity = 0
-        self.currentPos = (1, 1)
-        self.previousPos = [(1, 0), (1, 1)]
+    def create_bob_status_package(self, bob):
+        self.type = BOB_STATUS
+        self.data = {'id': bob.id, 'color': bob.color, 'currentTile': bob.CurrentTile.getGameCoord(), "previousTiles" : [tile.getGameCoord() for tile in bob.PreviousTiles], "energy": bob.energy, "mass": bob.mass, "velocity": bob.velocity, "speed": bob.speed, "color": bob.color, "vision": bob.vision, "memoryPoint": bob.memoryPoint }
+
+    def create_bob_consome(self, bob, energyEaten , eat_all):
+        self.type = BOB_CONSOME
+        self.data = [bob.id, bob.color, bob.energy, energyEaten, eat_all ]
+
+    def create_bob_kill(self, eater, pray ):
+        self.type = BOB_KILL
+        self.data = { 'eater_id': eater.id, 'eater_color': eater.color, 'pray_id': pray.id, 'pray_color': pray.color }
+
+    def create_bob_mate(self, bob1, bob2 ):
+        self.type = BOB_MATE
+        self.data = { 'bob1_id': bob1.id, 'bob1_color': bob1.color, 'bob2_id': bob2.id, 'bob2_color': bob2.color, 'child_id': bob1.child.id, 'child_color': bob1.child.color }
+
+    def create_food_state(self):
+        self.type = FOOD_STATE
+        self.data = []
+        from GameControl.gameControl import GameControl
+        game = GameControl.getInstance()
+        for row in game.grid:
+            for tiles in row:
+                if tiles.food != None:
+                    self.type = FOOD_STATE
+                    self.data.append([tiles.getGameCoord(), tiles.getEnergy()])
+
+
 
 class Client:
     def __init__(self, port, color, is_this_client):
         self.port = port
         self.color = color
         self.listBob = []
+        self.readyReq = False
+        self.ready_rep_pkg = None
         self.ready = False
         self.is_this_client = is_this_client
+        self.package = None
+        self.move_pkg = None
+        self.moved_package_waiting = False
+        self.interact_pkg = None
+        self.interact_package_waiting = False
 
     def addBob(self, bob):
         self.listBob.append(bob)

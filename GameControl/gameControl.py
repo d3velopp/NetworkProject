@@ -2,7 +2,7 @@ import random
 # from GameControl.settings import *
 import matplotlib.pyplot as plt
 from GameControl.setting import Setting
-from network.network import Network
+from network.network import *
 # from view.graph import *
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -23,14 +23,18 @@ class GameControl:
         self.nbBobs: 'int'= 0
         self.nbBobsSpawned = 0
         self.listBobs : list['Bob'] = []
+        self.listBobThisClient : list['Bob'] = []
         self.listFoods: set['Tile'] = set()
         self.newBornQueue : list['Bob'] = []
         self.diedQueue: list['Bob'] = []
         self.nbDied : 'int'= 0
         self.nbBorn : 'int'= 0
+        self.eat_all = False
         self.currentTick = 0
         self.currentDay = 0
         self.renderTick = 0
+        self.phase = 0 # 1 for render, 2 for move, 3 for action
+        self.package_tick = None
 ############################ Graph Data ########################################        
         self.graphData = []
         self.diedData = []
@@ -178,9 +182,45 @@ class GameControl:
         bob.setMemoryPoint(1)
         bob.determineNextTile()
         self.getListBobs().append(bob)
+        self.listBobThisClient.append(bob)
         self.setNbBobs(self.getNbBobs() + 1)
         self.setNbBobsSpawned(self.getNbBobsSpawned() + 1)
         bob.color = Network.getNetworkInstance().this_client.color
+        packet = Package(PYMSG_GAME_PUT)
+        data = Data()
+        data.create_bob_status_package(bob)
+        packet.addData(data)
+        packet.packData()
+        Network.getNetworkInstance().send_package(packet)
+
+    def client_put_bob(self, data):
+        from Tiles.Bob.bob import Bob
+        bob = Bob()
+        bob.id = data['id']
+        bob.color = data['color']
+        for row in self.grid:
+            for tile in row:
+                if tile.getGameCoord() == data['currentTile']:
+                    tile.addBob(bob)
+                    bob.setCurrentTile(tile)
+
+        for coord in data['previousTiles']:
+            for row in self.grid:
+                for tile in row:
+                    if tile.getGameCoord() == coord:
+                        bob.PreviousTiles.append(tile)
+        
+        bob.setEnergy(data['energy'])
+        bob.setMass(data['mass'])
+        bob.setVelocity(data['velocity'])
+        bob.speed = data['speed']
+        bob.vision = data['vision']
+        bob.memoryPoint = data['memoryPoint']
+        self.getListBobs().append(bob)
+        self.setNbBobs(self.getNbBobs() + 1)
+        self.setNbBobsSpawned(self.getNbBobsSpawned() + 1)
+
+
 
     def eatingTest(self):
         from Tiles.Bob.bob import Bob
@@ -255,6 +295,7 @@ class GameControl:
         self.listFoods.clear()
     def respawnFood(self):
         # couples: list[tuple] = []
+
         for _ in range(self.setting.getNbSpawnFood()):
             x = random.randint(0,self.setting.getGridLength()-1)
             y = random.randint(0,self.setting.getGridLength()-1)
@@ -263,16 +304,181 @@ class GameControl:
             #     y = random.randint(0,self.setting.getGridLength()-1)
             self.getMap()[x][y].spawnFood()
             self.listFoods.add(self.getMap()[x][y])
+            
             # couples.append((x, y))
+    
+    def tick_online_update(self):       
+        if ( self.phase == 1):
+            self.render_phase()
+        elif (self.phase == 2):
+            self.move_phase()
+        elif (self.phase == 3):
+            self.interact_phase()
+    
+    def send_current_state(self, client):
+        pkg = Package(PYMSG_GAME_STATE)
+        for bob in self.listBobs:
+            if bob.color == client.color:
+                if bob not in self.diedQueue:
+                    data = Data()
+                    data.create_bob_status_package(bob)
+                    pkg.addData(data)
+        for bob in self.newBornQueue:
+            if bob.color == client.color:
+                data = Data()
+                data.create_bob_born_package(bob)
+                pkg.addData(data)
+        data = Data()
+        data.create_food_state_package()
+        pkg.addData(data)
+        pkg.packData()
+        self.network.send_package(pkg)
 
+    def render_phase(self):
+        for color, client in self.network.clientList.items():
+            if client != None and client.readyReq:
+                self.send_current_state(client)
+                client.ready = True                
+                client.readyReq = False
+        self.renderTick += 1
+        if self.renderTick == self.setting.getFps():
+            self.renderTick = 0
+            self.currentTick += 1
+            if self.currentTick % 10 == 0:
+                self.nbBobPut = self.nbBobPut + 1
+            self.pushToList()
+            self.wipeBobs()
+            self.listBobs.sort(key=lambda x: x.speed, reverse=True)
+            for bob in self.listBobThisClient:
+                bob.clearPreviousTiles()
+            pkg = Package(PYMSG_GAME_MOVE)
+            for bob in self.listBobs:
+                if bob.color == self.network.this_client.color:
+                    bob.move_online(pkg)
+            pkg.packData()
+            self.network.send_package(pkg)
+            self.network.this_client.moved_package_waiting = True
+            self.phase = 2
+        return
+
+    def move_phase(self):
+        self.renderTick = 0
+        allow_move = False
+        for key, value in self.network.clientList.items():
+            if value is not None and value.ready and not value.moved_package_waiting:
+                allow_move = False
+                break
+            allow_move = True
+        if allow_move:
+            self.all_client_move()
+            pkg = Package(PYMSG_GAME_INTERACT)
+            for bob in self.listBobs:
+                if bob.color == self.network.this_client.color:
+                    bob.interact_online(pkg)
+            pkg.packData()
+            self.network.send_package(pkg)
+            self.network.this_client.interact_package_waiting = True
+            self.phase = 3
+        return
+    
+    def interact_phase(self):
+        self.renderTick = 0
+        allow_interact = False
+        for key, value in self.network.clientList.items():
+            if value is not None and value.ready and not value.interact_package_waiting:
+                allow_interact = False
+                break
+            allow_interact = True
+        if allow_interact:
+            self.all_client_interact()
+            for row in self.grid:
+                for tile in row:
+                    run_out = False
+                    for bob in tile.listBob:
+                        if not bob.eat_all:
+                            run_out = False
+                            break
+                    run_out = True
+                    if run_out:
+                        tile.removeFood()
+            self.network.this_client.moved = False
+            self.network.this_client.interacted = False
+            self.phase = 1
+        return
+
+
+
+    def all_client_interact(self):
+        for key, value in self.network.clientList.items():
+            if value is not None and value is not self.network.this_client and value.ready and value.interact_package_waiting:
+                value.interact_package.extractData()
+                for dataPack in value.interact_package.data:
+                    if dataPack.type == BOB_CONSOME:
+                        for bob in self.listBobs:
+                            if bob.id == dataPack.data['id'] and bob.color == dataPack.data['color']:
+                                bob.energy += dataPack.data['energy']
+                                bob.CurrentTile -= dataPack.data['energy']
+                                bob.eat_all = dataPack.data['eat_all']
+                    if dataPack.type == BOB_KILL:
+                        pred = None
+                        prey = None
+                        for bob in self.listBobs:
+                            if bob.id == dataPack.data['eater_id'] and bob.color == dataPack.data['eater_color']:
+                                pred = bob
+                            if bob.id == dataPack.data['prey_id'] and bob.color == dataPack.data['prey_color']:
+                                prey = bob
+                        if pred is not None and prey is not None and pred.color != prey.color:
+                            pred.eat(prey)
+                    if dataPack.type == BOB_MATE:
+                        bob1 = None
+                        bob2 = None
+                        for bob in self.listBobs:
+                            if bob.id == dataPack.data['bob1_id'] and bob.color == dataPack.data['bob1_color']:
+                                bob1 = bob
+                            if bob.id == dataPack.data['bob2_id'] and bob.color == dataPack.data['bob2_color']:
+                                bob2 = bob
+                        if bob1 is not None and bob2 is not None and bob1.color == bob2.color:
+                            child = bob1.mate(bob2)
+                            child.color = dataPack.data['child_color']
+                            child.id = dataPack.data['child_id']
+                value.interact_package_waiting = False
+                value.interact_package = None
+                                
+
+    def all_client_move(self):
+        for key, value in self.network.clientList.items():
+            if value is not None and value is not self.network.this_client and value.ready and value.move_package_waiting:
+                value.move_package.extractData()
+                for dataPack in value.move_package.data:
+                    if dataPack.type == BOB_STATUS:
+                        for bob in self.listBobs:
+                            if bob.id == dataPack.data['id'] and bob.color == dataPack.data['color']:
+                                bob.bob_info_assignment(dataPack.data)
+                    if dataPack.type == BOB_DIED:
+                        for bob in self.listBobs:
+                            if bob.id == dataPack.data['id'] and bob.color == dataPack.data['color']:
+                                bob.die()
+                    if dataPack.type == BOB_BORN:
+                        newBob = Bob()
+                        newBob.born_new_online_bob(dataPack.data)
+                value.move_package_waiting = False
+                value.move_package = None
+
+    
+    
+
+    def action_phase(self):
+        pass
     def updateRenderTick(self):
         self.renderTick += 1
         if self.renderTick == self.setting.getFps():
             self.renderTick = 0
-            self.increaseTick()
-        
+
+    
 
     def increaseTick(self):
+        from network.network import Network
+        net = Network.getNetworkInstance()
         for x in self.grid:
             for tile in x:
                 tile.seen = False
@@ -281,11 +487,20 @@ class GameControl:
         self.pushToList()
         self.wipeBobs()
         self.listBobs.sort(key=lambda x: x.speed, reverse=True)
-        for bob in self.listBobs:
-            bob.clearPreviousTiles()
-        for bob in self.listBobs:
-            if bob not in self.diedQueue:
-                bob.action()
+        if self.is_online == False:
+            for bob in self.listBobs:
+                bob.clearPreviousTiles()
+            for bob in self.listBobs:
+                if bob not in self.diedQueue:
+                    bob.action()
+        else:
+            for bob in self.listBobThisClient:
+                bob.clearPreviousTiles()
+            for bob in self.listBobThisClient:
+                if bob not in self.diedQueue:
+                    bob.action()
+                    self.prepareData(net, bob)
+                    
         # for bob in self.listBobs:
         #     if bob not in self.diedQueue:
                 
@@ -305,11 +520,29 @@ class GameControl:
         if self.currentTick == self.setting.getTicksPerDay():
             self.currentTick = 0
             self.increaseDay()
-
         if self.currentTick % 10 == 0:
             self.nbBobPut = self.nbBobPut + 1
-        # At the end of the tick, we have listBob, newBornQueue, diedQueue
+        if self.is_online:
+            net.this_client.package_tick.packData()
+            net.send_package(net.this_client.package_tick)
+            net.this_client.package_tick = None
+
         
+        # At the end of the tick, we have listBob, newBornQueue, diedQueue
+    
+    # def prepareData(self, net , bob: 'Bob'):
+    #     data = Data(BOB_STATUS)
+    #     bobStatus = BobStatus()
+    #     bobStatus.id = bob.id
+    #     bobStatus.color = bob.color
+    #     bobStatus.energy = bob.energy
+    #     bobStatus.mass = bob.mass
+    #     bobStatus.velolcity = bob.velocity
+    #     bobStatus.currentPos = bob.currentTile.getGameCoord()
+    #     bobStatus.previousPos = [tile.getGameCoord() for tile in bob.previousTiles]
+    #     data.setData(bobStatus)
+    #     net.this_client.package.addData(data)
+
     def increaseDay(self):
         self.wipeFood()
         self.respawnFood()

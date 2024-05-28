@@ -54,6 +54,14 @@ class Tile:
         return self.foodEnergy
     def getBobs(self):
         return self.listBob
+    
+    def getCurrentBob(self):
+        currentList = []
+        for bob in self.getBobs():
+            if bob in self.gameController.listBobs() and bob not in self.gameController.newBornQueue:
+                currentList.append(bob)
+        return currentList
+
     def addBob( self, bob: 'Bob'):
         self.listBob.append(bob)
         # bob.CurrentTile = self

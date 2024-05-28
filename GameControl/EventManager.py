@@ -2453,8 +2453,10 @@ def waiting_room( screen, clock):
         pkg.packData()
         pkg.pushData(net.pack_ip_port(ip_port_dict["IP"], ip_port_dict["PORT"]))
         net.send_package(pkg)
-    start_time = time.time()
+    time = 0
     while etat.waiting_room:
+        net.listen()
+        time += 1
         connected_players = [player for player in net.clientList.values() if player is not None]
         for event in pg.event.get():
             if event.type == pg.QUIT:
@@ -2467,21 +2469,34 @@ def waiting_room( screen, clock):
                     etat.waiting_room = False
                     etat.online_menu = True
                     return
-                if start_button_rect.collidepoint(event.pos):
+                if start_button_rect.collidepoint(event.pos) and time >= 500:
                     pkg = Package(PYMSG_GAME_READY)
                     pkg.packData()
                     net.send_package(pkg)
-                    net.this_client.ready = True
-                    etat.waiting_room = False
-                    etat.online_game = True
+                    net.this_client.readyReq = True
+                    
         #timer:
-        
+
+        if net.this_client != None and net.this_client.readyReq:
+            ready_for_play = True
+            for color, player in net.clientList.items():
+                if player is not None and player.ready:
+                    if player.ready_rep_pkg == None:
+                        ready_for_play = False
+                        break
+            if ready_for_play:
+                net.this_client.readyReq = False
+                net.this_client.ready = True
+                etat.waiting_room = False
+                etat.online_game = True
+
         # Vérifiez si le nombre de joueurs est suffisant pour jouer
         
         
         screen.blit(background_image2, (0, 0))
         draw_transparent_button("BACK", back_button_rect, 128)
-        draw_transparent_button("PLAY", start_button_rect, 128)
+        if time >= 500:
+            draw_transparent_button("PLAY", start_button_rect, 128)
         if net.clientList["Green"]:
             if net.clientList["Green"].ready:
                 screen.blit(green, (screen.get_width() // 2 - 100, 300))
@@ -2502,9 +2517,7 @@ def waiting_room( screen, clock):
                 screen.blit(red, (screen.get_width() // 2 - 100, 600))
             else:
                 screen.blit(redblack, (screen.get_width() // 2 - 100, 600))
-
-
-        net.listen()
+        
         pg.display.flip()
 
 ip_port_dict = { "IP": "", "PORT": 0 }

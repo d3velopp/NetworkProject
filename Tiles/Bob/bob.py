@@ -1,6 +1,7 @@
 from Tiles.tiles import Tile
 from GameControl.gameControl import GameControl
 from GameControl.setting import Setting
+from network.network import *
 from Tiles.directions import directionsDict, directionsList
 from view.texture import *
 import random
@@ -16,6 +17,8 @@ class Bob:
         self.age = 0
         self.isHunting = False
         self.alreadyInteracted = False
+        self.isReadyForInteraction = False
+        self.eat_all = False
         self.CurrentTile : 'Tile' = None
 
         self.energy: 'float' = self.setting.getBobSpawnEnergy()
@@ -33,7 +36,6 @@ class Bob:
         self.predators : list['Bob'] = []
         self.prey : 'Bob' = None
         self.foodTilesInVision : list['Tile'] = []
-
         self.memoryPoint: 'float' = self.setting.getDefaultMemoryPoint()
         self.memorySpace = 2 * round(self.memoryPoint)
         self.memorySpaceLeft = self.memorySpace
@@ -69,7 +71,178 @@ class Bob:
         newBob.memoryPoint = round(random.choice([max(0, self.memoryPoint - self.setting.getMemoryVariation()), self.memoryPoint, self.memoryPoint + self.setting.getMemoryVariation()]), 2)
         newBob.spawn(self.CurrentTile)
         self.energy = self.energy - self.setting.getBobSelfReproductionEnergyLoss()
+        return newBob
         
+    def born_new_online_bob(self,  dataPack: 'Data'):
+        from GameControl.gameControl import GameControl
+        game = GameControl.getInstance()
+        data = dataPack.data
+        self.id = data['id']
+        self.color = data['color']
+        self.energy = data['energy']
+        self.mass = data['mass']
+        self.velocity = data['velocity']
+        self.speed = data['speed']
+        self.vision = data['vision']
+        self.memoryPoint = data['memoryPoint']
+        for row in game.grid:
+            for tile in row:
+                if tile.getGameCoord() == data['currentTile']:
+                    self.spawn(tile)
+
+############################ Logic action ##################################
+
+    def bob_info_assignment(self, dataPack: 'Data'):
+        from GameControl.gameControl import GameControl
+        game = GameControl.getInstance()
+        data = dataPack.data
+        self.id = data['id']
+        self.color = data['color']
+        for row in game.grid:
+            for tile in row:
+                if tile.getGameCoord() == data['currentTile']:
+                    self.CurrentTile.removeBob(self)
+                    self.CurrentTile = tile
+                    tile.addBob(self)
+                    break
+        for coord in data['previousTiles']:
+            for row in game.grid:
+                for tile in row:
+                    if tile.getGameCoord() == coord:
+                        self.PreviousTiles.append(tile)
+        self.energy = data['energy']
+        self.mass = data['mass']
+        self.velocity = data['velocity']
+        self.speed = data['speed']
+        self.vision = data['vision']
+        self.memoryPoint = data['memoryPoint']
+
+    def interact_online(self, pkg: 'Package'):
+        if (self.CurrentTile.getEnergy() != 0):
+            if len(self.CurrentTile.getCurrentBob()) == 1:
+                energy = self.CurrentTile.getEnergy()
+                if(self.energy < self.setting.getBobMaxEnergy()):
+                    if ( self.energy + energy < self.setting.getBobMaxEnergy()):
+                        self.energy += energy
+                        self.CurrentTile.foodEnergy = 0
+                        data = Data()
+                        data.create_bob_consome(self, energy, 1 )
+                        self.eat_all = True
+                        pkg.addData(data)
+                    else:
+                        self.CurrentTile.foodEnergy -= (self.setting.getBobMaxEnergy() - self.energy)
+                        self.energy = self.setting.getBobMaxEnergy()
+                        data = Data()
+                        data.create_bob_consome(self, (self.setting.getBobMaxEnergy() - self.energy), 0 )
+                        pkg.addData(data)
+            elif len(self.CurrentTile.getCurrentBob()) > 1:
+                sum = 0
+                for bob in self.CurrentTile.getCurrentBob():
+                    sum += bob.velocity
+                energy = self.CurrentTile.getEnergy()*self.velocity/sum
+                if(self.energy < self.setting.getBobMaxEnergy()):
+                    if ( self.energy + energy < self.setting.getBobMaxEnergy()):
+                        self.energy += energy
+                        self.CurrentTile.foodEnergy -= energy
+                        self.eat_all = True
+                        data = Data()
+                        data.create_bob_consome(self, energy, 1 )
+                        pkg.addData(data)
+                    else:
+                        self.CurrentTile.foodEnergy -= (self.setting.getBobMaxEnergy() - self.energy)
+                        self.energy = self.setting.getBobMaxEnergy()
+                        data = Data()
+                        self.eat_all = False
+                        data.create_bob_consome(self, (self.setting.getBobMaxEnergy() - self.energy), 0 )
+                        pkg.addData(data)
+        elif (len(self.CurrentTile.getBobs()) > 1):
+            preys = self.detectPreys(self.CurrentTile.getBobs())
+            unluckyBob = self.getSmallestPrey(preys)
+            if (unluckyBob is not None):
+                self.eat(unluckyBob)
+                data = Data()
+                data.create_bob_kill(self.id, self.color, unluckyBob.id, unluckyBob.color)
+                pkg.addData(data)
+            elif (self.setting.getSexualReproduction()):
+                partners = self.detectPotentialPartners(self.CurrentTile.getBobs())
+                if (partners != []):
+                    partner = self.getRandomPartner(partners)
+                    childBob = self.mate(partner)
+                    if GameControl.getInstance().is_online:
+                        data = Data()
+                        data.create_bob_mate(self.id, self.energy, partner.id, partner.energy, childBob.id, childBob.energy, childBob.mass, childBob.velocity, childBob.speed, childBob.vision, childBob.memoryPoint)
+                        pkg.addData(data)
+                    
+
+    def move_online(self, pkg):
+        self.PreviousTile = self.CurrentTile
+        self.PreviousTiles.append(self.CurrentTile)
+        if (self.energy <= 0): 
+            self.die()
+            data = Data()
+            data.create_bob_die_package(self)
+            pkg.addData(data)
+            return
+            # Send message to all clients
+        elif self.energy >= self.setting.getBobMaxEnergy(): 
+            data = Data()
+            data.create_bob_born_package(self.reproduce())
+            pkg.addData(data)
+            data2 = Data()
+            data2.create_bob_status_package(self)
+            pkg.addData(data2)
+            # Send message to all clients
+        else: # Move
+            self.consumePerceptionAndMemoryEnergy()
+            if (self.speed < 1 or self.CurrentTile.getEnergy() != 0 or self.detectPreys(self.CurrentTile.getBobs()) != []):
+                self.consumeStationaryEnergy()
+                data = Data()
+                data.create_bob_status_package(self)
+                pkg.addData(data)
+                # Send message to all clients 
+            else:
+                self.consumeKinecticEnergy()
+                for _ in range(floor(self.speed)):
+                    if self in GameControl.getInstance().getDiedQueue():
+                        break
+                    else:
+                        if (self.alreadyInteracted):
+                            self.alreadyInteracted = False
+                        if (self.isReadyForInteraction):
+                            self.isReadyForInteraction = False
+                            data = Data()
+                            data.create_bob_status_package(self)
+                            pkg.addData(data)
+                            break
+                        else:
+                            if (self.memoryPoint != 0):
+                                self.memorizeVisitedTile(self.CurrentTile)
+                            if (round(self.vision) != 0):
+                                self.scan()
+                            self.determineNextTile()
+                            self.move()
+                            self.PreviousTiles.append(self.CurrentTile)
+                            if (self.CurrentTile.getEnergy() != 0):
+                                self.isReadyForInteraction = True
+                            elif (len(self.CurrentTile.getBobs()) > 1):
+                                preys = self.detectPreys(self.CurrentTile.getBobs())
+                                unluckyBob = self.getSmallestPrey(preys)
+                                if (unluckyBob is not None):
+                                    self.isReadyForInteraction = True
+                                elif (self.setting.getSexualReproduction()):
+                                    partners = self.detectPotentialPartners(self.CurrentTile.getBobs())
+                                    if (partners != []):
+                                        self.isReadyForInteraction = True
+                if not self.isReadyForInteraction:
+                    self.updateSpeed()
+                    data = Data()
+                    data.create_bob_status_package(self)
+                    pkg.addData(data)
+                    return
+                    # Send message to all clients
+            for tile in self.CurrentTile.getNearbyTiles(round(self.vision)):
+                tile.seen = True
+
 ################## Action ##################################
     def action(self):
         self.PreviousTile = self.CurrentTile
@@ -106,6 +279,8 @@ class Bob:
             self.updateSpeed()  
         for tile in self.CurrentTile.getNearbyTiles(round(self.vision)):
             tile.seen = True
+    
+
 
     def move(self):
         self.CurrentTile.removeBob(self)
@@ -161,6 +336,7 @@ class Bob:
         else:
             return bob.mass * 3 / 2 < self.mass
     
+
     def eat(self, bob: 'Bob'):
         ############################ Envoyer message de mort
 
@@ -176,6 +352,7 @@ class Bob:
 
     def mate(self, partner: 'Bob'):
         childBob = Bob()
+        childBob.color = self.color
         childBob.energy = self.setting.getSexualBornEnergy()
         childBob.mass = round((self.mass + partner.mass) / 2, 2)
         childBob.velocity = round((self.velocity + partner.velocity) / 2)
@@ -187,7 +364,9 @@ class Bob:
         partner.energy -= self.setting.getBobSexualReproductionLoss()
         self.alreadyInteracted = True
         partner.alreadyInteracted = True
+        return childBob
         print("Bob ", self.id, " and Bob ", partner.id, " have a child Bob ", childBob.id)
+
 
 ####################### Detect Preys, Predators. Partners and Foods #####################################
     def detectPreys(self, listBobs: list['Bob']) -> list['Bob']:
@@ -221,9 +400,14 @@ class Bob:
     
     def detectPotentialPartners(self, listBobs: list['Bob']) -> list['Bob']:
         potentialPartners: list['Bob'] = []
-        for bob in listBobs:
-            if (self.canMate(bob) and bob != self):
-                potentialPartners.append(bob)
+        if GameControl.getInstance().is_online:
+            for bob in listBobs:
+                if (self.canMate(bob) and bob != self and self.color == bob.color):
+                    potentialPartners.append(bob)
+        else:
+            for bob in listBobs:
+                if (self.canMate(bob) and bob != self):
+                    potentialPartners.append(bob)
         return potentialPartners
     
     def getRandomPartner(self, listPartners: list['Bob']) -> 'Bob':

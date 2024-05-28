@@ -34,3 +34,11 @@
 
 #define PYMSG_GAME_END 51
 
+#define PYMSG_GAME_UPDATE 52
+
+#define PYMSG_GAME_PUT 60
+
+#define PYMSG_GAME_MOVE 61
+
+#define PYMSG_GAME_INTERACT 62
+
