@@ -45,32 +45,32 @@ class Game_Online:
     
     def load_game(self):
         for color, player in self.network.clientList.items():
-            if player is not None and player.ready:
+            if player is not self.network.this_client and player is not None and player.ready:
                 if player.ready_rep_pkg == None:
                     raise Exception("Player ready_rep_pkg is None")
-                player.ready_rep_pkg.extract_data()
+                player.ready_rep_pkg.extractData()
                 for data in player.ready_rep_pkg.data:
                     if data.type == BOB_STATUS:
                         bob = Bob()
-                        bob.id = data['id']
-                        bob.color = data['color']
+                        bob.id = data.data['id']
+                        bob.color = data.data['color']
                         for row in self.gameController.grid:
                             for tile in row:
-                                if tile.getGameCoord() == data['currentTile']:
+                                if tile.getGameCoord() == data.data['currentTile']:
                                     bob.CurrentTile = tile
                                     tile.addBob(bob)
                                     break
-                        for coord in data['previousTiles']:
+                        for coord in data.data['previousTiles']:
                             for row in self.gameController.grid:
                                 for tile in row:
                                     if tile.getGameCoord() == coord:
                                         bob.PreviousTiles.append(tile)
-                        bob.energy = data['energy']
-                        bob.mass = data['mass']
-                        bob.velocity = data['velocity']
-                        bob.speed = data['speed']
-                        bob.vision = data['vision']
-                        bob.memoryPoint = data['memoryPoint']
+                        bob.energy = data.data['energy']
+                        bob.mass = data.data['mass']
+                        bob.velocity = data.data['velocity']
+                        bob.speed = data.data['speed']
+                        bob.vision = data.data['vision']
+                        bob.memoryPoint = data.data['memoryPoint']
                         self.gameController.listBobs.append(bob)
                     elif data.type == FOOD_STATE:
                         for cas in data.data:
@@ -162,13 +162,31 @@ class Game_Online:
                                 if -64 <= (a + self.camera.scroll.x) <= 1920 and -64 <= (b + self.camera.scroll.y)  <= 1080:
                                     listRect.append((tile,(a + self.camera.scroll.x, b + self.camera.scroll.y)))
                         for coord in listRect:
-                            if coord[1][0] <= mouse_x <= coord[1][0] + 64 and coord[1][1] + 8 <= mouse_y <= coord[1][1] + 24:
+                            if coord[1][0] < mouse_x < coord[1][0] + 64 and coord[1][1] + 8 < mouse_y < coord[1][1] + 24:
                                 if coord[0].territoire == self.network.this_client.color:
                                     if self.gameController.nbBobPut > 0:
                                         self.gameController.add_bob_online(coord[0])
                                         self.gameController.nbBobPut -= 1   
-            
+                    elif event.key == pg.K_n:
+                        mouse_x, mouse_y = pg.mouse.get_pos()
+                        listRect = []
+                        for row in self.gameController.getMap():
+                            for tile in row:
+                                (x,y) = tile.getRenderCoord()
+                                offset = ( x + setting.getSurfaceWidth()//2 , y + setting.getTileSize()  ) 
+                                a, b = offset
+                                if -64 <= (a + self.camera.scroll.x) <= 1920 and -64 <= (b + self.camera.scroll.y)  <= 1080:
+                                    listRect.append((tile,(a + self.camera.scroll.x, b + self.camera.scroll.y)))
+                        for coord in listRect:
+                            if coord[1][0] < mouse_x < coord[1][0] + 64 and coord[1][1] + 8 < mouse_y < coord[1][1] + 24:
+                                if self.gameController.nbFoodPut > 0:
+                                    self.gameController.add_bob_online(coord[0])
+                                    self.gameController.nbBobPut -= 1   
             self.gameController.tick_online_update()
+            sum = 0
+            for bob in self.gameController.listBobs:
+                sum += 1
+            print(sum)
             # print(self.gameController.renderTick)
             self.network.listen()
 
@@ -272,10 +290,10 @@ class Game_Online:
                                     surface.blit(redLeft, finish)
                                 elif bob.color == 2:
                                     surface.blit(blueLeft, finish)
-
-
-
-
+                                elif bob.color == 3:
+                                    surface.blit(greenLeft, finish)
+                                elif bob.color == 4:
+                                    surface.blit(purpleLeft, finish)
                             else: pass
                         else:
                             for i in range( nbInteval):
@@ -293,6 +311,10 @@ class Game_Online:
                                             surface.blit(redLeft, pos)
                                         elif bob.color == 2:
                                             surface.blit(blueLeft, pos)
+                                        elif bob.color == 3:
+                                            surface.blit(greenLeft, pos)
+                                        elif bob.color == 4:
+                                            surface.blit(purpleLeft, pos)
                                     else: pass
                                 else: pass
                     else:
@@ -307,6 +329,10 @@ class Game_Online:
                                 surface.blit(redLeft, finish)
                             elif bob.color == 2:
                                 surface.blit(blueLeft, finish)
+                            elif bob.color == 3:
+                                surface.blit(greenLeft, finish)
+                            elif bob.color == 4:
+                                surface.blit(purpleLeft, finish)
                         else: pass
         for bob in self.gameController.diedQueue:
             (x, y) = bob.getPreviousTile().getRenderCoord()
@@ -320,7 +346,14 @@ class Game_Online:
             a , b = finish
             if -64 <= (a + camera.scroll.x) <= 1920 and -64 <= (b + camera.scroll.y)  <= 1080:
                 if (self.gameController.renderTick < setting.getFps()/2):
-                    surface.blit(greenLeft, start)
+                    if bob.color == 1:
+                        surface.blit(redLeft, start)
+                    elif bob.color == 2:
+                        surface.blit(blueLeft, start)
+                    elif bob.color == 3:
+                        surface.blit(greenLeft, start)
+                    elif bob.color == 4:
+                        surface.blit(purpleLeft, start)
                 elif setting.getFps()/2 <= self.gameController.renderTick < setting.getFps()/2 + setting.getFps()/16:
                     surface.blit(explode1, finish)
                 elif setting.getFps()/2 + setting.getFps()/16 <= self.gameController.renderTick < setting.getFps()/2 + 2*setting.getFps()/16:
@@ -414,7 +447,7 @@ class Game_Online:
 
         for coord in listRect:
             if coord[1][0] <= mouse_x <= coord[1][0] + 64 and coord[1][1] + 8 <= mouse_y <= coord[1][1] + 24:
-                print(coord[0].gridX, coord[0].gridY)
+                # print(coord[0].gridX, coord[0].gridY)
                 coord[0].hover = True
                 nb = 1
                 # for bob in coord[0].getBobs():

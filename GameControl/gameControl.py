@@ -315,16 +315,16 @@ class GameControl:
         elif (self.phase == 3):
             self.interact_phase()
     
-    def send_current_state(self, client):
+    def send_current_state(self):
         pkg = Package(PYMSG_GAME_STATE)
         for bob in self.listBobs:
-            if bob.color == client.color:
+            if bob.color == self.network.this_client.color:
                 if bob not in self.diedQueue:
                     data = Data()
                     data.create_bob_status_package(bob)
                     pkg.addData(data)
         for bob in self.newBornQueue:
-            if bob.color == client.color:
+            if bob.color == self.network.this_client.color:
                 data = Data()
                 data.create_bob_born_package(bob)
                 pkg.addData(data)
@@ -335,11 +335,6 @@ class GameControl:
         self.network.send_package(pkg)
 
     def render_phase(self):
-        for color, client in self.network.clientList.items():
-            if client != None and client.readyReq:
-                self.send_current_state(client)
-                client.ready = True                
-                client.readyReq = False
         self.renderTick += 1
         if self.renderTick == self.setting.getFps():
             self.renderTick = 0
@@ -349,7 +344,7 @@ class GameControl:
             self.pushToList()
             self.wipeBobs()
             self.listBobs.sort(key=lambda x: x.speed, reverse=True)
-            for bob in self.listBobThisClient:
+            for bob in self.listBobs:
                 bob.clearPreviousTiles()
             pkg = Package(PYMSG_GAME_MOVE)
             for bob in self.listBobs:
@@ -363,13 +358,16 @@ class GameControl:
 
     def move_phase(self):
         self.renderTick = 0
-        allow_move = False
+        allow = True
+        list_ready = []
         for key, value in self.network.clientList.items():
-            if value is not None and value.ready and not value.moved_package_waiting:
-                allow_move = False
+            if value is not None and value.ready:
+                list_ready.append(value)
+        for client in list_ready:
+            if client.moved_package_waiting == False:
+                allow = False
                 break
-            allow_move = True
-        if allow_move:
+        if allow:
             self.all_client_move()
             pkg = Package(PYMSG_GAME_INTERACT)
             for bob in self.listBobs:
@@ -383,13 +381,16 @@ class GameControl:
     
     def interact_phase(self):
         self.renderTick = 0
-        allow_interact = False
+        allow = True
+        list_ready = []
         for key, value in self.network.clientList.items():
-            if value is not None and value.ready and not value.interact_package_waiting:
-                allow_interact = False
+            if value is not None and value is not self.network.this_client and value.ready:
+                list_ready.append(value)
+        for client in list_ready:
+            if not client.interact_package_waiting:
+                allow = False
                 break
-            allow_interact = True
-        if allow_interact:
+        if allow:
             self.all_client_interact()
             for row in self.grid:
                 for tile in row:
@@ -401,8 +402,11 @@ class GameControl:
                     run_out = True
                     if run_out:
                         tile.removeFood()
-            self.network.this_client.moved = False
-            self.network.this_client.interacted = False
+            for color, client in self.network.clientList.items():
+                if client != None and client is not self.network.this_client and client.readyReq:
+                    self.send_current_state()
+                    client.ready = True                
+                    client.readyReq = False
             self.phase = 1
         return
 
@@ -411,8 +415,8 @@ class GameControl:
     def all_client_interact(self):
         for key, value in self.network.clientList.items():
             if value is not None and value is not self.network.this_client and value.ready and value.interact_package_waiting:
-                value.interact_package.extractData()
-                for dataPack in value.interact_package.data:
+                value.interact_pkg.extractData()
+                for dataPack in value.interact_pkg.data:
                     if dataPack.type == BOB_CONSOME:
                         for bob in self.listBobs:
                             if bob.id == dataPack.data['id'] and bob.color == dataPack.data['color']:
@@ -447,22 +451,23 @@ class GameControl:
 
     def all_client_move(self):
         for key, value in self.network.clientList.items():
-            if value is not None and value is not self.network.this_client and value.ready and value.move_package_waiting:
-                value.move_package.extractData()
-                for dataPack in value.move_package.data:
+            if value is not None and value is not self.network.this_client and value.ready and value.moved_package_waiting:
+                value.move_pkg.extractData()
+                for dataPack in value.move_pkg.data:
                     if dataPack.type == BOB_STATUS:
                         for bob in self.listBobs:
                             if bob.id == dataPack.data['id'] and bob.color == dataPack.data['color']:
-                                bob.bob_info_assignment(dataPack.data)
+                                bob.bob_info_assignment(dataPack)
                     if dataPack.type == BOB_DIED:
                         for bob in self.listBobs:
                             if bob.id == dataPack.data['id'] and bob.color == dataPack.data['color']:
+                                bob.PreviousTile = bob.CurrentTile
                                 bob.die()
                     if dataPack.type == BOB_BORN:
                         newBob = Bob()
-                        newBob.born_new_online_bob(dataPack.data)
-                value.move_package_waiting = False
-                value.move_package = None
+                        newBob.born_new_online_bob(dataPack)
+                value.moved_package_waiting = False
+                value.move_pkg = None
 
     
     

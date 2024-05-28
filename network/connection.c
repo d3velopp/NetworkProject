@@ -277,15 +277,6 @@ int pymsg_type_handler(python_packet* packet){
         case PYMSG_JOIN_ROOM:
             return join_room(packet);
         case PYMSG_GAME_READY:
-            // client* current_client = first_client();
-            // game_packet* new_packet = create_game_packet();
-            // init_game_packet(new_packet, MSG_GAME_READY, 0);
-            // while(current_client != NULL){
-            //     if ( send_game_packet(new_packet, current_client->socket_client) == -1){
-            //         return -1;
-            //     }
-            //     current_client = current_client->next;
-            // }
             return send_to_all_client(packet);
         case PYMSG_GAME_UPDATE:
             return send_to_all_client(packet);
@@ -294,6 +285,8 @@ int pymsg_type_handler(python_packet* packet){
         case PYMSG_GAME_MOVE:
             return send_to_all_client(packet);
         case PYMSG_GAME_INTERACT:
+            return send_to_all_client(packet);
+        case PYMSG_GAME_STATE:
             return send_to_all_client(packet);
     }
 }
@@ -318,12 +311,12 @@ int join_room(python_packet* packet){
 int send_to_all_client(python_packet* packet){
     client* current_client = first_client();
     game_packet* new_packet = encapsulate_python_packet(packet);
-    print_game_packet(new_packet);
+    // print_game_packet(new_packet);
     while(current_client != NULL){
         if ( send_game_packet(new_packet, current_client->socket_client) == -1){
             return -1;
         }
-        printf("Send %d bytes to client with port %d\n", new_packet->size, current_client->port);
+        // printf("Send %d bytes to client with port %d\n", new_packet->size, current_client->port);
         current_client = current_client->next;
     }
     return 0;

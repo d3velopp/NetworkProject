@@ -109,6 +109,7 @@ class Bob:
             for row in game.grid:
                 for tile in row:
                     if tile.getGameCoord() == coord:
+
                         self.PreviousTiles.append(tile)
         self.energy = data['energy']
         self.mass = data['mass']

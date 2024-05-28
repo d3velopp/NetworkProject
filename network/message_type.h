@@ -36,6 +36,10 @@
 
 #define PYMSG_GAME_UPDATE 52
 
+#define PYMSG_GAME_READY_REP 53
+
+#define PYMSG_GAME_STATE 54
+
 #define PYMSG_GAME_PUT 60
 
 #define PYMSG_GAME_MOVE 61

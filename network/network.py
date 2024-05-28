@@ -93,6 +93,7 @@ class Network:
             if len(data):
                 size += len(data)
                 pkg.toBytes(data)
+        else: pkg.byte = b''
         print("[Py] [Receive] Type:", pkg.type, "Port:", pkg.port, "Size:", pkg.size)
         self.c_socket.setblocking(1)
         return size
@@ -103,7 +104,7 @@ class Network:
     def send_package(self, pkg):
         self.c_socket.setblocking(1)
         self.c_socket.sendall(pkg.byte)
-        print("[Py] [Send] Size:", pkg.size, "Type:", pkg.type, "Port:", pkg.port)
+        print("[Py] [Send] Type:", pkg.type, "Size:", pkg.size, "Port:", pkg.port)
     
     def listen(self):
         pkg = Package(0)
@@ -157,7 +158,9 @@ class Network:
         elif pkg.type == PYMSG_GAME_STATE:
             for key, value in self.clientList.items():
                 if value != None and value.port == pkg.port:
+                    value.readyReq = False
                     value.ready = True
+                    value.ready_rep_pkg = pkg
                     break
     
     def put_bob(self, pkg):
@@ -174,7 +177,7 @@ class Network:
         for key, value in self.clientList.items():
             if value != None and value.port == pkg.port:
                 value.move_pkg = pkg
-                value.move_package_waiting = True
+                value.moved_package_waiting = True
                 break
     
     def push_to_interact_pkg_queue(self, pkg):
@@ -182,6 +185,7 @@ class Network:
             if value != None and value.port == pkg.port:
                 value.interact_pkg = pkg
                 value.interact_package_waiting = True
+                # print("Allow client with port", value.port, "to interact")
                 break
 
 
@@ -201,8 +205,20 @@ class Network:
         print(self.clientList)
 
     def remove_client(self, pkg):
+        from GameControl.gameControl import GameControl
+        game = GameControl.getInstance()
         for key, value in self.clientList.items():
             if value != None and value.port == pkg.port:
+                listBob = []
+                for bob in game.listBobs:
+                    if bob.color == value.color:
+                        listBob.append(bob)
+                for bob in game.newBornQueue:
+                    if bob.color == value.color:
+                        listBob.append(bob)
+                for bob in listBob:
+                    bob.CurrentTile.removeBob(bob)
+                    game.listBobs.remove(bob)                   
                 self.clientList[key] = None
                 print("[Py] Player", key, "removed")
                 break
@@ -292,6 +308,8 @@ class Package:
         self.byte = data
 
     def extractData(self):
+        if self.byte == b'':
+            return
         self.data = pickle.loads(self.byte)
 
 
@@ -307,7 +325,7 @@ class Data:
 
     def create_bob_die_package(self, bob):
         self.type = BOB_DIED
-        self.data = [bob.id, bob.color]
+        self.data = {'id':bob.id,'color': bob.color}
     
     def create_bob_born_package(self, bob):
         self.type = BOB_BORN
@@ -329,14 +347,14 @@ class Data:
         self.type = BOB_MATE
         self.data = { 'bob1_id': bob1.id, 'bob1_color': bob1.color, 'bob2_id': bob2.id, 'bob2_color': bob2.color, 'child_id': bob1.child.id, 'child_color': bob1.child.color }
 
-    def create_food_state(self):
+    def create_food_state_package(self):
         self.type = FOOD_STATE
         self.data = []
         from GameControl.gameControl import GameControl
         game = GameControl.getInstance()
         for row in game.grid:
             for tiles in row:
-                if tiles.food != None:
+                if tiles.getEnergy() != 0:
                     self.type = FOOD_STATE
                     self.data.append([tiles.getGameCoord(), tiles.getEnergy()])
 
@@ -374,4 +392,4 @@ class Client:
 #         self.List_BOB_SPEED = list_bob_settings[5]
 #         self.List_BOB_ENERGY = list_bob_settings[6]
 #         self.Nb_FOOD = nb_food
-#         self.List_FOOD_COORD = list_food_settings[0]
+#         self.List_FOOD_COORD = list_food_settings[0]clearPrev
