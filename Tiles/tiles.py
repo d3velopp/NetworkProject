@@ -58,7 +58,7 @@ class Tile:
     def getCurrentBob(self):
         currentList = []
         for bob in self.getBobs():
-            if bob in self.gameController.listBobs() and bob not in self.gameController.newBornQueue:
+            if bob in self.gameController.listBobs and bob not in self.gameController.newBornQueue:
                 currentList.append(bob)
         return currentList
 

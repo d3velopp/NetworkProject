@@ -162,7 +162,24 @@ class Network:
                     value.ready = True
                     value.ready_rep_pkg = pkg
                     break
-    
+        elif pkg.type == PYMSG_GAME_PUT_FOOD:
+            if self.this_client.readyReq or not self.this_client.ready:
+                for color, client in self.clientList.items():
+                    if client != None and client.port == pkg.port:
+                        client.ready = True
+            else:
+                self.put_food(pkg)
+
+    def put_food(self, pkg):
+        from GameControl.gameControl import GameControl
+        game = GameControl.getInstance()
+        pkg.extractData()
+        for data in pkg.data:
+            if data.type != PUT_FOOD:
+                print("Error: Wrong data type")
+            else:
+                game.client_put_food(data.data)
+
     def put_bob(self, pkg):
         from GameControl.gameControl import GameControl
         game = GameControl.getInstance()
@@ -337,7 +354,7 @@ class Data:
 
     def create_bob_consome(self, bob, energyEaten , eat_all):
         self.type = BOB_CONSOME
-        self.data = [bob.id, bob.color, bob.energy, energyEaten, eat_all ]
+        self.data = {'id': bob.id, 'color': bob.color,'energy': energyEaten, 'eat_all': eat_all }
 
     def create_bob_kill(self, eater, pray ):
         self.type = BOB_KILL
@@ -346,6 +363,10 @@ class Data:
     def create_bob_mate(self, bob1, bob2 ):
         self.type = BOB_MATE
         self.data = { 'bob1_id': bob1.id, 'bob1_color': bob1.color, 'bob2_id': bob2.id, 'bob2_color': bob2.color, 'child_id': bob1.child.id, 'child_color': bob1.child.color }
+
+    def create_put_food_package(self, tile):
+        self.type = PUT_FOOD
+        self.data = tile.getGameCoord()
 
     def create_food_state_package(self):
         self.type = FOOD_STATE

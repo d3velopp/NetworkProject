@@ -288,6 +288,8 @@ int pymsg_type_handler(python_packet* packet){
             return send_to_all_client(packet);
         case PYMSG_GAME_STATE:
             return send_to_all_client(packet);
+        case PYMSG_GAME_PUT_FOOD:
+            return send_to_all_client(packet);
     }
 }
 

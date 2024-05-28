@@ -46,3 +46,5 @@
 
 #define PYMSG_GAME_INTERACT 62
 
+#define PYMSG_GAME_PUT_FOOD 63
+

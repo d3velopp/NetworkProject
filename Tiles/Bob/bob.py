@@ -132,10 +132,10 @@ class Bob:
                         pkg.addData(data)
                     else:
                         self.CurrentTile.foodEnergy -= (self.setting.getBobMaxEnergy() - self.energy)
-                        self.energy = self.setting.getBobMaxEnergy()
                         data = Data()
                         data.create_bob_consome(self, (self.setting.getBobMaxEnergy() - self.energy), 0 )
                         pkg.addData(data)
+                        self.energy = self.setting.getBobMaxEnergy()
             elif len(self.CurrentTile.getCurrentBob()) > 1:
                 sum = 0
                 for bob in self.CurrentTile.getCurrentBob():
@@ -148,14 +148,17 @@ class Bob:
                         self.eat_all = True
                         data = Data()
                         data.create_bob_consome(self, energy, 1 )
+                        # print("Bob ", self.id, self.color ," eat ", energy, " energy", self.eat_all)
                         pkg.addData(data)
                     else:
+                        # print(self.energy)
+                        self.eat_all = False
+                        # print("Bob ", self.id, self.color ," eat ", self.setting.getBobMaxEnergy() - self.energy, " energy", self.eat_all)
+                        data = Data()
+                        data.create_bob_consome(self, self.setting.getBobMaxEnergy() - self.energy, 0 )
+                        pkg.addData(data)
                         self.CurrentTile.foodEnergy -= (self.setting.getBobMaxEnergy() - self.energy)
                         self.energy = self.setting.getBobMaxEnergy()
-                        data = Data()
-                        self.eat_all = False
-                        data.create_bob_consome(self, (self.setting.getBobMaxEnergy() - self.energy), 0 )
-                        pkg.addData(data)
         elif (len(self.CurrentTile.getBobs()) > 1):
             preys = self.detectPreys(self.CurrentTile.getBobs())
             unluckyBob = self.getSmallestPrey(preys)
@@ -169,6 +172,7 @@ class Bob:
                 if (partners != []):
                     partner = self.getRandomPartner(partners)
                     childBob = self.mate(partner)
+                    print("Mateeeeeeee")
                     if GameControl.getInstance().is_online:
                         data = Data()
                         data.create_bob_mate(self.id, self.energy, partner.id, partner.energy, childBob.id, childBob.energy, childBob.mass, childBob.velocity, childBob.speed, childBob.vision, childBob.memoryPoint)
@@ -183,7 +187,6 @@ class Bob:
             data = Data()
             data.create_bob_die_package(self)
             pkg.addData(data)
-            return
             # Send message to all clients
         elif self.energy >= self.setting.getBobMaxEnergy(): 
             data = Data()
@@ -200,6 +203,7 @@ class Bob:
                 data = Data()
                 data.create_bob_status_package(self)
                 pkg.addData(data)
+                # print("Standing still", self.speed , self.velocity, self.CurrentTile.getEnergy(), self.detectPreys(self.CurrentTile.getBobs()))
                 # Send message to all clients 
             else:
                 self.consumeKinecticEnergy()
@@ -235,14 +239,14 @@ class Bob:
                                     if (partners != []):
                                         self.isReadyForInteraction = True
                 if not self.isReadyForInteraction:
-                    self.updateSpeed()
                     data = Data()
                     data.create_bob_status_package(self)
                     pkg.addData(data)
-                    return
                     # Send message to all clients
-            for tile in self.CurrentTile.getNearbyTiles(round(self.vision)):
-                tile.seen = True
+            self.updateSpeed()
+        for tile in self.CurrentTile.getNearbyTiles(round(self.vision)):
+            tile.seen = True
+            # print("Tile seen", tile.seen)
 
 ################## Action ##################################
     def action(self):

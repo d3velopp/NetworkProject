@@ -49,6 +49,7 @@ class GameControl:
         self.nbVision = 0
         self.nbEnergy = 0
         self.nbBobPut = 0
+        self.nbFoodPut = 0
         # self.graph = Graph()
 ################################# Graph methods ########################################
     def getMasses(self) -> list[float]:
@@ -192,6 +193,24 @@ class GameControl:
         packet.addData(data)
         packet.packData()
         Network.getNetworkInstance().send_package(packet)
+
+    def add_food_online(self, tile: 'Tile'):
+        tile.spawnFood()
+        self.listFoods.add(tile)
+        packet = Package(PYMSG_GAME_PUT_FOOD)
+        data = Data()
+        data.create_put_food_package(tile)
+        packet.addData(data)
+        packet.packData()
+        Network.getNetworkInstance().send_package(packet)
+
+    def client_put_food(self, data ):
+        for row in self.grid:
+            for tile in row:
+                if tile.getGameCoord() == data:
+                    tile.spawnFood()
+                    self.listFoods.add(tile)
+
 
     def client_put_bob(self, data):
         from Tiles.Bob.bob import Bob
@@ -338,9 +357,13 @@ class GameControl:
         self.renderTick += 1
         if self.renderTick == self.setting.getFps():
             self.renderTick = 0
+            for row in self.grid:
+                for tile in row:
+                    tile.seen = False
             self.currentTick += 1
             if self.currentTick % 10 == 0:
                 self.nbBobPut = self.nbBobPut + 1
+                self.nbFoodPut = self.nbFoodPut + 1
             self.pushToList()
             self.wipeBobs()
             self.listBobs.sort(key=lambda x: x.speed, reverse=True)
@@ -394,19 +417,22 @@ class GameControl:
             self.all_client_interact()
             for row in self.grid:
                 for tile in row:
-                    run_out = False
-                    for bob in tile.listBob:
-                        if not bob.eat_all:
-                            run_out = False
-                            break
-                    run_out = True
-                    if run_out:
-                        tile.removeFood()
+                    if tile.getEnergy() > 0:
+                        if tile.listBob != []:
+                            eat_all = True
+                            for bob in tile.listBob:
+                                if bob.eat_all == False:
+                                    eat_all = False
+                                    break
+                            print ("Eat all:", eat_all)
+                            if eat_all:
+                                tile.removeFood()
             for color, client in self.network.clientList.items():
                 if client != None and client is not self.network.this_client and client.readyReq:
                     self.send_current_state()
                     client.ready = True                
-                    client.readyReq = False
+                    client.readyReq = False    
+                                    
             self.phase = 1
         return
 
@@ -420,8 +446,9 @@ class GameControl:
                     if dataPack.type == BOB_CONSOME:
                         for bob in self.listBobs:
                             if bob.id == dataPack.data['id'] and bob.color == dataPack.data['color']:
+                                print("Bob consume:", bob.id, bob.color, dataPack.data['energy'], dataPack.data['eat_all'])
                                 bob.energy += dataPack.data['energy']
-                                bob.CurrentTile -= dataPack.data['energy']
+                                bob.CurrentTile.foodEnergy -= dataPack.data['energy']
                                 bob.eat_all = dataPack.data['eat_all']
                     if dataPack.type == BOB_KILL:
                         pred = None
@@ -450,6 +477,7 @@ class GameControl:
                                 
 
     def all_client_move(self):
+        from Tiles.Bob.bob import Bob
         for key, value in self.network.clientList.items():
             if value is not None and value is not self.network.this_client and value.ready and value.moved_package_waiting:
                 value.move_pkg.extractData()
@@ -525,8 +553,6 @@ class GameControl:
         if self.currentTick == self.setting.getTicksPerDay():
             self.currentTick = 0
             self.increaseDay()
-        if self.currentTick % 10 == 0:
-            self.nbBobPut = self.nbBobPut + 1
         if self.is_online:
             net.this_client.package_tick.packData()
             net.send_package(net.this_client.package_tick)

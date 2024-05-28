@@ -180,13 +180,8 @@ class Game_Online:
                         for coord in listRect:
                             if coord[1][0] < mouse_x < coord[1][0] + 64 and coord[1][1] + 8 < mouse_y < coord[1][1] + 24:
                                 if self.gameController.nbFoodPut > 0:
-                                    self.gameController.add_bob_online(coord[0])
-                                    self.gameController.nbBobPut -= 1   
+                                    self.gameController.add_food_online(coord[0])
             self.gameController.tick_online_update()
-            sum = 0
-            for bob in self.gameController.listBobs:
-                sum += 1
-            print(sum)
             # print(self.gameController.renderTick)
             self.network.listen()
 
