@@ -109,8 +109,8 @@ class Bob:
             for row in game.grid:
                 for tile in row:
                     if tile.getGameCoord() == coord:
-
                         self.PreviousTiles.append(tile)
+        # print("Bob ", self.id, " is assigned to tile ", [tile.getGameCoord() for tile in self.PreviousTiles])
         self.energy = data['energy']
         self.mass = data['mass']
         self.velocity = data['velocity']
@@ -120,21 +120,25 @@ class Bob:
 
     def interact_online(self, pkg: 'Package'):
         if (self.CurrentTile.getEnergy() != 0):
+            # print(len(self.CurrentTile.getCurrentBob()))
             if len(self.CurrentTile.getCurrentBob()) == 1:
                 energy = self.CurrentTile.getEnergy()
                 if(self.energy < self.setting.getBobMaxEnergy()):
                     if ( self.energy + energy < self.setting.getBobMaxEnergy()):
+                        self.eat_all = True
                         self.energy += energy
                         self.CurrentTile.foodEnergy = 0
                         data = Data()
                         data.create_bob_consome(self, energy, 1 )
-                        self.eat_all = True
+                        # print("Bob ", self.id, self.color ," eat ", energy, " energy", self.eat_all)
                         pkg.addData(data)
                     else:
+                        self.eat_all = False
                         self.CurrentTile.foodEnergy -= (self.setting.getBobMaxEnergy() - self.energy)
                         data = Data()
                         data.create_bob_consome(self, (self.setting.getBobMaxEnergy() - self.energy), 0 )
                         pkg.addData(data)
+                        # print("Bob ", self.id, self.color ," eat ", self.setting.getBobMaxEnergy() - self.energy, " energy", self.eat_all)
                         self.energy = self.setting.getBobMaxEnergy()
             elif len(self.CurrentTile.getCurrentBob()) > 1:
                 sum = 0
@@ -143,17 +147,17 @@ class Bob:
                 energy = self.CurrentTile.getEnergy()*self.velocity/sum
                 if(self.energy < self.setting.getBobMaxEnergy()):
                     if ( self.energy + energy < self.setting.getBobMaxEnergy()):
+                        self.eat_all = True
                         self.energy += energy
                         self.CurrentTile.foodEnergy -= energy
-                        self.eat_all = True
                         data = Data()
                         data.create_bob_consome(self, energy, 1 )
-                        # print("Bob ", self.id, self.color ," eat ", energy, " energy", self.eat_all)
+                        print("Bob ", self.id, self.color ," eat ", energy, " energy", self.eat_all)
                         pkg.addData(data)
                     else:
                         # print(self.energy)
                         self.eat_all = False
-                        # print("Bob ", self.id, self.color ," eat ", self.setting.getBobMaxEnergy() - self.energy, " energy", self.eat_all)
+                        print("Bob ", self.id, self.color ," eat ", self.setting.getBobMaxEnergy() - self.energy, " energy", self.eat_all)
                         data = Data()
                         data.create_bob_consome(self, self.setting.getBobMaxEnergy() - self.energy, 0 )
                         pkg.addData(data)
@@ -175,7 +179,7 @@ class Bob:
                     print("Mateeeeeeee")
                     if GameControl.getInstance().is_online:
                         data = Data()
-                        data.create_bob_mate(self.id, self.energy, partner.id, partner.energy, childBob.id, childBob.energy, childBob.mass, childBob.velocity, childBob.speed, childBob.vision, childBob.memoryPoint)
+                        data.create_bob_mate(self, partner, childBob.id, childBob.color)
                         pkg.addData(data)
                     
 
@@ -214,10 +218,7 @@ class Bob:
                         if (self.alreadyInteracted):
                             self.alreadyInteracted = False
                         if (self.isReadyForInteraction):
-                            self.isReadyForInteraction = False
-                            data = Data()
-                            data.create_bob_status_package(self)
-                            pkg.addData(data)
+                            # self.isReadyForInteraction = False
                             break
                         else:
                             if (self.memoryPoint != 0):
@@ -227,7 +228,7 @@ class Bob:
                             self.determineNextTile()
                             self.move()
                             self.PreviousTiles.append(self.CurrentTile)
-                            if (self.CurrentTile.getEnergy() != 0):
+                            if (self.CurrentTile.getEnergy() > 0):
                                 self.isReadyForInteraction = True
                             elif (len(self.CurrentTile.getBobs()) > 1):
                                 preys = self.detectPreys(self.CurrentTile.getBobs())
@@ -238,14 +239,15 @@ class Bob:
                                     partners = self.detectPotentialPartners(self.CurrentTile.getBobs())
                                     if (partners != []):
                                         self.isReadyForInteraction = True
-                if not self.isReadyForInteraction:
-                    data = Data()
-                    data.create_bob_status_package(self)
-                    pkg.addData(data)
-                    # Send message to all clients
+            
+                data = Data()
+                data.create_bob_status_package(self)
+                pkg.addData(data)
+                self.isReadyForInteraction = False
             self.updateSpeed()
         for tile in self.CurrentTile.getNearbyTiles(round(self.vision)):
             tile.seen = True
+        
             # print("Tile seen", tile.seen)
 
 ################## Action ##################################

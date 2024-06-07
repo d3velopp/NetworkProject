@@ -356,6 +356,7 @@ class GameControl:
     def render_phase(self):
         self.renderTick += 1
         if self.renderTick == self.setting.getFps():
+            print("-----------------Render Phase------------------")
             self.renderTick = 0
             for row in self.grid:
                 for tile in row:
@@ -373,6 +374,8 @@ class GameControl:
             for bob in self.listBobs:
                 if bob.color == self.network.this_client.color:
                     bob.move_online(pkg)
+            for dat in pkg.data:
+                print(dat.type, "Id:", dat.data['id'])
             pkg.packData()
             self.network.send_package(pkg)
             self.network.this_client.moved_package_waiting = True
@@ -391,12 +394,14 @@ class GameControl:
                 allow = False
                 break
         if allow:
+            print("-----------------Move Phase------------------")
             self.all_client_move()
             pkg = Package(PYMSG_GAME_INTERACT)
             for bob in self.listBobs:
                 if bob.color == self.network.this_client.color:
                     bob.interact_online(pkg)
             pkg.packData()
+            # print(self.listBobs)
             self.network.send_package(pkg)
             self.network.this_client.interact_package_waiting = True
             self.phase = 3
@@ -414,14 +419,18 @@ class GameControl:
                 allow = False
                 break
         if allow:
+            print("-----------------Interact Phase------------------")
             self.all_client_interact()
+            # print("List:", self.listBobs)
             for row in self.grid:
                 for tile in row:
                     if tile.getEnergy() > 0:
                         if tile.listBob != []:
+                            print(tile.listBob)
                             eat_all = True
                             for bob in tile.listBob:
-                                if bob.eat_all == False:
+                                if bob not in self.newBornQueue and bob.eat_all == False:
+                                    print("Eat_all State:",bob.id, bob.color, bob.eat_all)
                                     eat_all = False
                                     break
                             print ("Eat all:", eat_all)
@@ -431,8 +440,7 @@ class GameControl:
                 if client != None and client is not self.network.this_client and client.readyReq:
                     self.send_current_state()
                     client.ready = True                
-                    client.readyReq = False    
-                                    
+                    client.readyReq = False      
             self.phase = 1
         return
 
@@ -446,7 +454,7 @@ class GameControl:
                     if dataPack.type == BOB_CONSOME:
                         for bob in self.listBobs:
                             if bob.id == dataPack.data['id'] and bob.color == dataPack.data['color']:
-                                print("Bob consume:", bob.id, bob.color, dataPack.data['energy'], dataPack.data['eat_all'])
+                                print("Bob consume:", bob.id, bob.color, dataPack.data['energy'], dataPack.data['eat_all'], bob.CurrentTile.getGameCoord())
                                 bob.energy += dataPack.data['energy']
                                 bob.CurrentTile.foodEnergy -= dataPack.data['energy']
                                 bob.eat_all = dataPack.data['eat_all']

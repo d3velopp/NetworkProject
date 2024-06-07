@@ -38,6 +38,7 @@ class Game_Online:
     
     def createNewGame(self):
         self.gameController.initiateGame()
+        self.gameController.is_online = True
         self.gameController.createWorld(self.setting.getGridLength(),self.setting.getGridLength()) 
         self.camera = Camera(self.width, self.height) 
         self.gameController.nbBobPut = 5
@@ -81,25 +82,25 @@ class Game_Online:
                                         break
                     elif data.type == BOB_BORN:
                         bob = Bob()
-                        bob.id = data['id']
-                        bob.color = data['color']
+                        bob.id = data.data['id']
+                        bob.color = data.data['color']
                         for row in self.gameController.grid:
                             for tile in row:
-                                if tile.getGameCoord() == data['currentTile']:
+                                if tile.getGameCoord() == data.data['currentTile']:
                                     bob.CurrentTile = tile
                                     tile.addBob(bob)
                                     break
-                        for coord in data['previousTiles']:
+                        for coord in data.data['previousTiles']:
                             for row in self.gameController.grid:
                                 for tile in row:
                                     if tile.getGameCoord() == coord:
                                         bob.PreviousTiles.append(tile)
-                        bob.energy = data['energy']
-                        bob.mass = data['mass']
-                        bob.velocity = data['velocity']
-                        bob.speed = data['speed']
-                        bob.vision = data['vision']
-                        bob.memoryPoint = data['memoryPoint']
+                        bob.energy = data.data['energy']
+                        bob.mass = data.data['mass']
+                        bob.velocity = data.data['velocity']
+                        bob.speed = data.data['speed']
+                        bob.vision = data.data['vision']
+                        bob.memoryPoint = data.data['memoryPoint']
                         self.gameController.addToNewBornQueue(bob)
 
     def loadGame(self, saveNumber):
@@ -149,7 +150,7 @@ class Game_Online:
                         self.etat.online_game = False
                         self.playing = False
                         self.network.close_socket()
-                        self.network.destroyNetwork()
+                        Network.destroyNetwork()
                         return
                     elif event.key == pg.K_b:
                         mouse_x, mouse_y = pg.mouse.get_pos()
@@ -181,6 +182,8 @@ class Game_Online:
                             if coord[1][0] < mouse_x < coord[1][0] + 64 and coord[1][1] + 8 < mouse_y < coord[1][1] + 24:
                                 if self.gameController.nbFoodPut > 0:
                                     self.gameController.add_food_online(coord[0])
+
+
             self.gameController.tick_online_update()
             # print(self.gameController.renderTick)
             self.network.listen()
