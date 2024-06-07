@@ -38,6 +38,7 @@ class Game_Online:
     
     def createNewGame(self):
         self.gameController.initiateGame()
+        self.gameController.is_online = True
         self.gameController.createWorld(self.setting.getGridLength(),self.setting.getGridLength()) 
         self.camera = Camera(self.width, self.height) 
         self.gameController.nbBobPut = 5
@@ -81,25 +82,25 @@ class Game_Online:
                                         break
                     elif data.type == BOB_BORN:
                         bob = Bob()
-                        bob.id = data['id']
-                        bob.color = data['color']
+                        bob.id = data.data['id']
+                        bob.color = data.data['color']
                         for row in self.gameController.grid:
                             for tile in row:
-                                if tile.getGameCoord() == data['currentTile']:
+                                if tile.getGameCoord() == data.data['currentTile']:
                                     bob.CurrentTile = tile
                                     tile.addBob(bob)
                                     break
-                        for coord in data['previousTiles']:
+                        for coord in data.data['previousTiles']:
                             for row in self.gameController.grid:
                                 for tile in row:
                                     if tile.getGameCoord() == coord:
                                         bob.PreviousTiles.append(tile)
-                        bob.energy = data['energy']
-                        bob.mass = data['mass']
-                        bob.velocity = data['velocity']
-                        bob.speed = data['speed']
-                        bob.vision = data['vision']
-                        bob.memoryPoint = data['memoryPoint']
+                        bob.energy = data.data['energy']
+                        bob.mass = data.data['mass']
+                        bob.velocity = data.data['velocity']
+                        bob.speed = data.data['speed']
+                        bob.vision = data.data['vision']
+                        bob.memoryPoint = data.data['memoryPoint']
                         self.gameController.addToNewBornQueue(bob)
 
     def loadGame(self, saveNumber):
@@ -149,7 +150,7 @@ class Game_Online:
                         self.etat.online_game = False
                         self.playing = False
                         self.network.close_socket()
-                        self.network.destroyNetwork()
+                        Network.destroyNetwork()
                         return
                     elif event.key == pg.K_b:
                         mouse_x, mouse_y = pg.mouse.get_pos()
@@ -181,6 +182,8 @@ class Game_Online:
                             if coord[1][0] < mouse_x < coord[1][0] + 64 and coord[1][1] + 8 < mouse_y < coord[1][1] + 24:
                                 if self.gameController.nbFoodPut > 0:
                                     self.gameController.add_food_online(coord[0])
+
+
             self.gameController.tick_online_update()
             # print(self.gameController.renderTick)
             self.network.listen()
@@ -211,7 +214,11 @@ class Game_Online:
             #     self.draw()
         if not self.etat.playing:
             return
-            
+                
+    def afficherText(self,surface, text, x, y, size, color):
+        font = pg.font.Font(None, size)
+        text = font.render(text, 1, color)
+        surface.blit(text, (x, y))
 
     def drawModifiable_Online(self, surface, camera):
         net = Network.getNetworkInstance()
@@ -280,7 +287,8 @@ class Game_Online:
                             a,b = finish
                             if -64 <= (a + camera.scroll.x) <= 1920 and -64 <= (b + camera.scroll.y)  <= 1080:
                                 bar_width = int((bob.energy / bob.energyMax) * 50)
-                                pg.draw.rect(surface, (255, 0, 0), (finish[0], finish[1] - 5, bar_width, 5))
+                                self.afficherText(surface, f"Energy: {bob.energy}", finish[0], finish[1] - 5, 15, (255,0,0))
+                                # pg.draw.rect(surface, (255, 0, 0), (finish[0], finish[1] - 5, bar_width, 5))
                                 if bob.color == 1:
                                     surface.blit(redLeft, finish)
                                 elif bob.color == 2:
@@ -301,7 +309,8 @@ class Game_Online:
                                     a,b = pos
                                     if -64 <= (a + camera.scroll.x) <= 1920 and -64 <= (b + camera.scroll.y)  <= 1080:
                                         bar_width = int((bob.energy / bob.energyMax) * 50)
-                                        pg.draw.rect(surface, (255, 0, 0), (pos[0], pos[1] - 5, bar_width, 5))
+                                        self.afficherText(surface, f"Energy: {bob.energy}", pos[0], pos[1] - 5, 15, (255,0,0))
+                                        # pg.draw.rect(surface, (255, 0, 0), (pos[0], pos[1] - 5, bar_width, 5))
                                         if bob.color == 1:
                                             surface.blit(redLeft, pos)
                                         elif bob.color == 2:
@@ -319,7 +328,8 @@ class Game_Online:
                         a,b = finish
                         if -64 <= (a + camera.scroll.x) <= 1920 and -64 <= (b + camera.scroll.y)  <= 1080:
                             bar_width = int((bob.energy / bob.energyMax) * 50)
-                            pg.draw.rect(surface, (255, 0, 0), (finish[0], finish[1] - 5, bar_width, 5))
+                            self.afficherText(surface, f"Energy: {bob.energy}", finish[0], finish[1] - 5, 15, (255,0,0))
+                            # pg.draw.rect(surface, (255, 0, 0), (finish[0], finish[1] - 5, bar_width, 5))
                             if bob.color == 1:
                                 surface.blit(redLeft, finish)
                             elif bob.color == 2:
@@ -410,9 +420,9 @@ class Game_Online:
             position = (X , Y + setting.getTileSize() )
             a,b = position
             if -64 <= (a + camera.scroll.x) <= 1920 and -64 <= (b + camera.scroll.y)  <= 1080:
-                
-                bar_width = int((food.foodEnergy / setting.getFoodEnergy()) * 50)
-                pg.draw.rect(surface, (0, 0, 255), (position[0] + 5, position[1] - 5, bar_width, 5))
+                self.afficherText(surface, f"Food: {food.foodEnergy}", position[0], position[1] - 5, 15, (0,0,255))
+                # bar_width = int((food.foodEnergy / setting.getFoodEnergy()) * 50)
+                # pg.draw.rect(surface, (0, 0, 255), (position[0] + 5, position[1] - 5, bar_width, 5))
                 surface.blit(foodTexture, position)
             else: pass
         mouse_x, mouse_y = pg.mouse.get_pos()
@@ -532,6 +542,16 @@ class Game_Online:
         (0,0,0),
         (10, 110) 
         )
+
+        draw_text(
+        surface,
+        'Port: {}'.format(self.network.this_client.port),
+        25,
+        (0,0,0),
+        (10, 130) 
+        )
+
+
 
         if net.clientList["Red"] and net.clientList["Red"].ready:
             surface.blit(redLeft, (10, 150))

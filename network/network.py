@@ -94,7 +94,7 @@ class Network:
                 size += len(data)
                 pkg.toBytes(data)
         else: pkg.byte = b''
-        print("[Py] [Receive] Type:", pkg.type, "Port:", pkg.port, "Size:", pkg.size)
+        # print("[Py] [Receive] Type:", pkg.type, "Port:", pkg.port, "Size:", pkg.size)
         self.c_socket.setblocking(1)
         return size
 
@@ -104,7 +104,7 @@ class Network:
     def send_package(self, pkg):
         self.c_socket.setblocking(1)
         self.c_socket.sendall(pkg.byte)
-        print("[Py] [Send] Type:", pkg.type, "Size:", pkg.size, "Port:", pkg.port)
+        # print("[Py] [Send] Type:", pkg.type, "Size:", pkg.size, "Port:", pkg.port)
     
     def listen(self):
         pkg = Package(0)
@@ -257,6 +257,7 @@ class Network:
             Network.instance = Network()
         return Network.instance
 
+    @staticmethod
     def destroyNetwork(self):
         Network.instance = None
 
@@ -360,9 +361,9 @@ class Data:
         self.type = BOB_KILL
         self.data = { 'eater_id': eater.id, 'eater_color': eater.color, 'pray_id': pray.id, 'pray_color': pray.color }
 
-    def create_bob_mate(self, bob1, bob2 ):
+    def create_bob_mate(self, bob1, bob2, childid, childcolor):
         self.type = BOB_MATE
-        self.data = { 'bob1_id': bob1.id, 'bob1_color': bob1.color, 'bob2_id': bob2.id, 'bob2_color': bob2.color, 'child_id': bob1.child.id, 'child_color': bob1.child.color }
+        self.data = { 'bob1_id': bob1.id, 'bob1_color': bob1.color, 'bob2_id': bob2.id, 'bob2_color': bob2.color, 'child_id': childid, 'child_color': childcolor }
 
     def create_put_food_package(self, tile):
         self.type = PUT_FOOD
