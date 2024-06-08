@@ -275,15 +275,15 @@ class Game_Online:
             if (bob not in self.gameController.diedQueue) and (bob not in self.gameController.newBornQueue):
                 # if(self.gameController.getTick() % 2 == 0 ):
                     nbInteval = len(bob.getPreviousTiles()) - 1
+                    
                     if ( self.gameController.renderTick < setting.getFps()/2):
-                        if nbInteval == 0:
+                        if ( self.gameController.renderTick == 0 and bob.color != net.this_client.color and self.gameController.phase == 2):
                             (destX, destY) = bob.getCurrentTile().getRenderCoord()
                             (desX, desY) = (destX + surface.get_width()/2 , destY - ( + 50 - setting.getTileSize() ) )
                             finish = (desX, desY + setting.getTileSize())
                             a,b = finish
                             if -64 <= (a + camera.scroll.x) <= 1920 and -64 <= (b + camera.scroll.y)  <= 1080:
-                                bar_width = int((bob.energy / bob.energyMax) * 50)
-                                pg.draw.rect(surface, (255, 0, 0), (finish[0], finish[1] - 5, bar_width, 5))
+                                self.afficherText(surface, f"Energy: {bob.energy}", finish[0], finish[1] - 5, 15, (255,0,0))
                                 if bob.color == 1:
                                     surface.blit(redLeft, finish)
                                 elif bob.color == 2:
@@ -294,35 +294,50 @@ class Game_Online:
                                     surface.blit(purpleLeft, finish)
                             else: pass
                         else:
-                            for i in range( nbInteval):
-                                if ( i*setting.getFps()) / (nbInteval * 2) <= self.gameController.renderTick < (i+1)*setting.getFps() / (nbInteval * 2):
-                                    (x, y) = bob.getPreviousTiles()[i].getRenderCoord()
-                                    (X, Y) = (x + surface.get_width()/2 , y - (50 - setting.getTileSize() ) )
-                                    (destX, destY) = bob.getPreviousTiles()[i+1].getRenderCoord()
-                                    (desX, desY) = (destX + surface.get_width()/2 , destY - ( + 50 - setting.getTileSize() ) )
-                                    pos = (X + (desX - X) * (self.gameController.renderTick - (i*setting.getFps())/(2 * nbInteval)) * (2 * nbInteval) / setting.getFps() , Y + (desY - Y) * (self.gameController.renderTick - (i*setting.getFps())/(2 * nbInteval) ) * (2 * nbInteval) / setting.getFps()  + setting.getTileSize()  )
-                                    a,b = pos
-                                    if -64 <= (a + camera.scroll.x) <= 1920 and -64 <= (b + camera.scroll.y)  <= 1080:
-                                        bar_width = int((bob.energy / bob.energyMax) * 50)
-                                        pg.draw.rect(surface, (255, 0, 0), (pos[0], pos[1] - 5, bar_width, 5))
-                                        if bob.color == 1:
-                                            surface.blit(redLeft, pos)
-                                        elif bob.color == 2:
-                                            surface.blit(blueLeft, pos)
-                                        elif bob.color == 3:
-                                            surface.blit(greenLeft, pos)
-                                        elif bob.color == 4:
-                                            surface.blit(purpleLeft, pos)
-                                    else: pass
+                            if nbInteval == 0:
+                                (destX, destY) = bob.getCurrentTile().getRenderCoord()
+                                (desX, desY) = (destX + surface.get_width()/2 , destY - ( + 50 - setting.getTileSize() ) )
+                                finish = (desX, desY + setting.getTileSize())
+                                a,b = finish
+                                if -64 <= (a + camera.scroll.x) <= 1920 and -64 <= (b + camera.scroll.y)  <= 1080:
+                                    self.afficherText(surface, f"Energy: {bob.energy}", finish[0], finish[1] - 5, 15, (255,0,0))
+                                    if bob.color == 1:
+                                        surface.blit(redLeft, finish)
+                                    elif bob.color == 2:
+                                        surface.blit(blueLeft, finish)
+                                    elif bob.color == 3:
+                                        surface.blit(greenLeft, finish)
+                                    elif bob.color == 4:
+                                        surface.blit(purpleLeft, finish)
                                 else: pass
+                            else:
+                                for i in range( nbInteval):
+                                    if ( i*setting.getFps()) / (nbInteval * 2) <= self.gameController.renderTick < (i+1)*setting.getFps() / (nbInteval * 2):
+                                        (x, y) = bob.getPreviousTiles()[i].getRenderCoord()
+                                        (X, Y) = (x + surface.get_width()/2 , y - (50 - setting.getTileSize() ) )
+                                        (destX, destY) = bob.getPreviousTiles()[i+1].getRenderCoord()
+                                        (desX, desY) = (destX + surface.get_width()/2 , destY - ( + 50 - setting.getTileSize() ) )
+                                        pos = (X + (desX - X) * (self.gameController.renderTick - (i*setting.getFps())/(2 * nbInteval)) * (2 * nbInteval) / setting.getFps() , Y + (desY - Y) * (self.gameController.renderTick - (i*setting.getFps())/(2 * nbInteval) ) * (2 * nbInteval) / setting.getFps()  + setting.getTileSize()  )
+                                        a,b = pos
+                                        if -64 <= (a + camera.scroll.x) <= 1920 and -64 <= (b + camera.scroll.y)  <= 1080:
+                                            self.afficherText(surface, f"Energy: {bob.energy}", pos[0], pos[1] - 5, 15, (255,0,0))
+                                            if bob.color == 1:
+                                                surface.blit(redLeft, pos)
+                                            elif bob.color == 2:
+                                                surface.blit(blueLeft, pos)
+                                            elif bob.color == 3:
+                                                surface.blit(greenLeft, pos)
+                                            elif bob.color == 4:
+                                                surface.blit(purpleLeft, pos)
+                                        else: pass
+                                    else: pass
                     else:
                         (destX, destY) = bob.getCurrentTile().getRenderCoord()
                         (desX, desY) = (destX + surface.get_width()/2 , destY - ( + 50 - setting.getTileSize() ) )
                         finish = (desX, desY + setting.getTileSize())
                         a,b = finish
                         if -64 <= (a + camera.scroll.x) <= 1920 and -64 <= (b + camera.scroll.y)  <= 1080:
-                            bar_width = int((bob.energy / bob.energyMax) * 50)
-                            pg.draw.rect(surface, (255, 0, 0), (finish[0], finish[1] - 5, bar_width, 5))
+                            self.afficherText(surface, f"Energy: {bob.energy}", finish[0], finish[1] - 5, 15, (255,0,0))
                             if bob.color == 1:
                                 surface.blit(redLeft, finish)
                             elif bob.color == 2:
@@ -413,9 +428,7 @@ class Game_Online:
             position = (X , Y + setting.getTileSize() )
             a,b = position
             if -64 <= (a + camera.scroll.x) <= 1920 and -64 <= (b + camera.scroll.y)  <= 1080:
-                
-                bar_width = int((food.foodEnergy / setting.getFoodEnergy()) * 50)
-                pg.draw.rect(surface, (0, 0, 255), (position[0] + 5, position[1] - 5, bar_width, 5))
+                self.afficherText(surface, f"Food: {food.foodEnergy}", position[0], position[1] - 5, 15, (0,0,255))
                 surface.blit(foodTexture, position)
             else: pass
         mouse_x, mouse_y = pg.mouse.get_pos()
@@ -489,6 +502,12 @@ class Game_Online:
                     draw_text(surface, f"Velocity: {new_object_dict['Bob Velocity']}",15,(0,0,0), ((mouse_x - camera.scroll.x -50 * nb  + 5 , mouse_y - camera.scroll.y + 50 + 35)))
                     draw_text(surface, f"Memory: {new_object_dict['Bob Memory Point']}",15,(0,0,0), ((mouse_x - camera.scroll.x -50 * nb  + 5 , mouse_y - camera.scroll.y + 50 + 45)))
                     draw_text(surface, f"Food {new_object_dict['Food Energy']}",15,(0,0,0) , ((mouse_x - camera.scroll.x -50 * nb  + 5 , mouse_y - camera.scroll.y + 50 + 55)))
+
+    def afficherText(self,surface, text, x, y, size, color):
+        font = pg.font.Font(None, size)
+        text = font.render(text, 1, color)
+        surface.blit(text, (x, y))
+
 
     def drawIndex_Online(self, surface):
         
