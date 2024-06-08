@@ -369,8 +369,7 @@ class GameControl:
             self.wipeBobs()
             self.listBobs.sort(key=lambda x: x.speed, reverse=True)
             for bob in self.listBobs:
-                if bob.color == self.network.this_client.color:
-                    bob.clearPreviousTiles()
+                bob.clearPreviousTiles()
             pkg = Package(PYMSG_GAME_MOVE)
             for bob in self.listBobs:
                 if bob.color == self.network.this_client.color:
@@ -396,9 +395,6 @@ class GameControl:
                 break
         if allow:
             print("-----------------Move Phase------------------")
-            for bob in self.listBobs:
-                if bob.color != self.network.this_client.color:
-                    bob.clearPreviousTiles()
             self.all_client_move()
             pkg = Package(PYMSG_GAME_INTERACT)
             for bob in self.listBobs:
@@ -517,8 +513,8 @@ class GameControl:
     def updateRenderTick(self):
         self.renderTick += 1
         if self.renderTick == self.setting.getFps():
-            self.renderTick = 0
             self.increaseTick()
+            self.renderTick = 0
 
     
 
