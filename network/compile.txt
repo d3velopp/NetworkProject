@@ -1,1 +1,0 @@
-gcc python_connect.c python_connect.h client_list.c client_list.h connection.c connection.h game_packet.c game_packet.h message_type.h -o client
