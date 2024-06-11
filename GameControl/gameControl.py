@@ -178,7 +178,7 @@ class GameControl:
         bob.CurrentTile.addBob(bob)
         bob.setEnergy(100)
         bob.setMass(1)
-        bob.setVision(0)
+        bob.setVision(8)
         bob.setVelocity(1)
         bob.setMemoryPoint(1)
         bob.determineNextTile()
