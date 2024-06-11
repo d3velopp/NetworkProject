@@ -1,0 +1,1 @@
+{ "mon_adresse": "127.0.0.1", "mon_port": 8081, "les_adresses_destination": [ "127.0.0.1" ], "les_ports_destination": [ "8080" ], "donnees_a_envoyer": [5555], "donnees_recues": [  ] }
