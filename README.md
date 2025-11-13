@@ -1,10 +1,7 @@
-Here is the clean Markdown file content without citations.
+# Projet Python : Jeu de la Vie
 
-***
+![alt text](demo.png)
 
-# Rapport de Projet Python : Jeu de la Vie
-
-**Institution :** INSA Centre Val de Loire
 ---
 
 ## 1. Introduction
